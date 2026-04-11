@@ -177,6 +177,7 @@ function ProductShowcase() {
         </p>
         <p className="mt-3 text-[var(--text-muted)]">
           Navegue pelos módulos principais.
+        </p>
       </FadeInView>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
