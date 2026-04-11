@@ -176,10 +176,7 @@ function ProductShowcase() {
           O software por dentro — limpo, rápido e consistente
         </p>
         <p className="mt-3 text-[var(--text-muted)]">
-          Navegue pelos módulos principais. As artes abaixo refletem o layout e a hierarquia visual do app; você
-          pode substituir por capturas de tela em alta resolução na pasta{" "}
-          <span className="font-mono text-xs text-brand-cyan">public/sobre/</span>.
-        </p>
+          Navegue pelos módulos principais.
       </FadeInView>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
