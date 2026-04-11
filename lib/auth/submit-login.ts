@@ -9,6 +9,18 @@ type LoginApiSuccess = {
   urlVisionBord?: string;
 };
 
+/** Resposta da API quando a conta está inativa / assinatura necessária (modal de renovação no login). */
+function isInactiveAccountResponse(data: unknown, httpStatus: number): boolean {
+  if (httpStatus === 402) return true;
+  if (!data || typeof data !== "object") return false;
+  const o = data as Record<string, unknown>;
+  return (
+    o.httpStatus === "PAYMENT_REQUIRED" &&
+    typeof o.message === "string" &&
+    o.message === "Conta Inativa"
+  );
+}
+
 function extractToken(body: LoginApiSuccess): string | null {
   if (typeof body.BearerToken === "string" && body.BearerToken.trim()) {
     return body.BearerToken.trim();
@@ -21,7 +33,8 @@ function extractToken(body: LoginApiSuccess): string | null {
 
 /**
  * POST `{API_BASE_URL}/api/authentication/login` — body `{ email, password }`.
- * Sucesso: `BearerToken`, `urlVisionBord`. Erros: 401 e-mail não confirmado; 404 credenciais inválidas.
+ * Sucesso: `BearerToken`, `urlVisionBord`. Erros: 401 e-mail não confirmado; 404 credenciais inválidas;
+ * corpo `{ httpStatus: "PAYMENT_REQUIRED", message: "Conta Inativa" }` ou HTTP 402 → `PLAN_EXPIRED` (modal renovação).
  *
  * TODO (contract): retornos a documentar no back e refletir aqui — 201 Created (se diferente de 200);
  * 400/422 validação de payload; 403 plano expirou ou conta suspensa (`PLAN_EXPIRED`);
@@ -43,6 +56,10 @@ export async function submitLoginRequest(email: string, password: string): Promi
       data = await res.json();
     } catch {
       data = {};
+    }
+
+    if (isInactiveAccountResponse(data, res.status)) {
+      return { ok: false, code: "PLAN_EXPIRED" };
     }
 
     if (res.ok) {

@@ -27,9 +27,9 @@ const COPY: Record<
     descId: "login-modal-invalid-desc",
   },
   PLAN_EXPIRED: {
-    title: "Plano expirado",
+    title: "Renovar plano",
     description:
-      "Seu acesso ao InEvolving está suspenso porque o plano expirou. Fale conosco pelo WhatsApp para renovar e voltar a usar a plataforma.",
+      "Seu acesso ao InEvolving está suspenso (plano expirado ou conta inativa). Fale conosco pelo WhatsApp para renovar e voltar a usar a plataforma.",
     titleId: "login-modal-plan-title",
     descId: "login-modal-plan-desc",
   },
