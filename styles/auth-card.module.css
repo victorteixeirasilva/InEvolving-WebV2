@@ -1,0 +1,30 @@
+.wrap {
+  position: relative;
+  border-radius: 1.25rem;
+  padding: 1px;
+  background: linear-gradient(
+    130deg,
+    rgba(25, 118, 210, 0.55),
+    rgba(0, 188, 212, 0.45),
+    rgba(123, 44, 191, 0.4)
+  );
+  background-size: 200% 200%;
+  animation: borderFlow 12s ease infinite;
+}
+
+.inner {
+  border-radius: 1.2rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+@keyframes borderFlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}

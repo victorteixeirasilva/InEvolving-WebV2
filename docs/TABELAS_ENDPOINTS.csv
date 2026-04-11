@@ -1,0 +1,79 @@
+Tela,Componente,Metodo,Endpoint,Payload_Query_Exibicao,Observacoes
+/login,CardInputLogin,POST,/api/authentication/login,"email, password","Sucesso: token; redirect /dashboard"
+/login,ConfirmeEmail,-,-,Mensagem e-mail nao confirmado,Resposta API especifica
+/login,EsqueciSenha,POST,/api/authentication/forgot,userEmail,
+/cadastro,CardInputCadastro,POST,/api/authentication/register,"email, password",Validar senhas iguais
+/cadastro,ObrigadoPorSeCadastrar,-,-,Feedback pos-cadastro,
+/redefinir-senha,page.tsx,PUT,/api/authentication/forgot/update (URL absoluta no codigo),"idToken, newPassword",Query token obrigatorio
+/dashboard,dashboard/page.tsx,GET,/auth/api/dashboard/categories,Bearer,Lista categorias
+/dashboard,dashboard/page.tsx,GET,/auth/api/motivation/dreams/visionbord/generate,Bearer,urlVisionBord
+/dashboard,BotaoDashVerDatalhesCategoria,-,-,localStorage categoriaAtual,Push /dashboard/categoria
+/dashboard/categoria,page.tsx,GET,/auth/api/dashboard/category/objectives/{id},Bearer,Lê categoriaAtual
+/dashboard/categoria,page.tsx,-,-,"categoryName, description, objectives",Editar objetivo -> /desculpa (placeholder)
+/dashboard/categoria/objetivo,page.tsx,-,-,objetivoAtual localStorage,Analises e graficos
+/dashboard/categoria/objetivo,GraficoMotivosTarefas,GET,/auth/api/dashboard/cancellation-reason?idObjective=,Query idObjective,
+/dashboard/categoria/objetivo,Jarvas,GET,/auth/api/user/neurokeys,Bearer,Saldo
+/dashboard/categoria/objetivo,Jarvas,DELETE,/auth/api/user/neurokeys,Bearer,Consumo
+/dashboard/categoria/objetivo,Jarvas,POST,/auth/api/dashboard/ia,Body Objective completo,Resposta IA markdown
+/objetivos,page.tsx,GET,/auth/api/objectives/user,Bearer,Filtro todos
+/objetivos,page.tsx,GET,/auth/api/objectives/status/todo/user,Bearer,Em progresso
+/objetivos,page.tsx,GET,/auth/api/objectives/status/done/user,Bearer,Concluidos
+/objetivos,AdicionarNovoObjetivo,POST,/auth/api/objectives,"nameObjective, descriptionObjective",
+/objetivos,AdicionarNovaCategoria,POST,/auth/api/categories,"categoryName, categoryDescription",
+/objetivos,AdicionarNovaCategoria,POST,/auth/api/categories/objective,"idCategory, idObjective",Por objetivo selecionado
+/objetivos,AdicionarNovaCategoria,GET,/auth/api/objectives/user,Bearer,Lista para vincular
+/objetivos,EditarObjetivo,PUT,/auth/api/objectives/{id},"nameObjective, descriptionObjective",
+/objetivos,EditarObjetivo,PATCH,/auth/api/objectives/{id}/{data},Path data YYYY-MM-DD,Concluir
+/objetivos,EditarObjetivo,DELETE,/auth/api/objectives/{id},Bearer,Excluir
+/objetivos,VerListaDeTarefas,GET,/auth/api/tasks/objective/{objetivoId},Bearer,
+/tarefas,page.tsx,GET,/auth/api/tasks/{YYYY-MM-DD},Bearer,Dia
+/tarefas,page.tsx,GET,/auth/api/tasks/status/todo/{data},Bearer,
+/tarefas,page.tsx,GET,/auth/api/tasks/status/progress/{data},Bearer,
+/tarefas,page.tsx,GET,/auth/api/tasks/status/done/{data},Bearer,
+/tarefas,page.tsx,GET,/auth/api/tasks/status/canceled/{data},Bearer,
+/tarefas,page.tsx,GET,/auth/api/tasks/late,Bearer,Atrasadas
+/tarefas,page.tsx,GET,/auth/api/objectives/status/todo/user,Bearer,Nova tarefa
+/tarefas,page.tsx,POST,/auth/api/tasks,"nameTask, descriptionTask, dateTask, idObjective",
+/tarefas,page.tsx,POST,/auth/api/tasks/repeat/{id}/{date}/{dataFim},"monday..sunday booleans",Recorrencia
+/tarefas,page.tsx,GET,/auth/api/tasks/task/{id},Bearer,Busca por ID
+/tarefas,editarTarefa,GET,/auth/api/tasks/{id},Bearer,
+/tarefas,editarTarefa,PUT,/auth/api/tasks/{id},Body atualizacao,
+/tarefas,editarTarefa,PATCH,/auth/api/tasks/status/todo/{id},Bearer,
+/tarefas,editarTarefa,PATCH,/auth/api/tasks/status/progress/{id},Bearer,
+/tarefas,editarTarefa,PATCH,/auth/api/tasks/status/done/{id},Bearer,
+/tarefas,editarTarefa,PATCH,/auth/api/tasks/status/late/{id},Bearer,
+/tarefas,editarTarefa,POST,/auth/api/tasks/status/canceled,Body cancelamento,
+/tarefas,editarTarefa,PATCH,/auth/api/tasks/date/{id}/{YYYY-MM-DD},,
+/tarefas,editarTarefa,GET,/auth/api/dashboard/cancellation-reason?idObjective=,Motivos,
+/tarefas,menuStatusTarefa,PATCH,/auth/api/tasks/status/todo|progress|done|late/{id},Bearer,
+/financas,page.tsx,GET,/auth/api/finance/{inicio}/{fim},Path datas mes,ResponseFinancas
+/financas,page.tsx,DELETE,/auth/api/finance/transaction/{id},Bearer,
+/financas,page.tsx,POST,/auth/api/finance/transaction/cost_of_living,Body transacao,
+/financas,page.tsx,POST,/auth/api/finance/transaction/investment,Body transacao,
+/financas,page.tsx,POST,/auth/api/finance/transaction/extra_contribution,Body transacao,
+/financas,page.tsx,PUT ou PATCH,/auth/api/finance/wage,Body salario,
+/livros,page.tsx,POST,/auth/api/books,"title, author, theme, coverImage",
+/livros,page.tsx,GET,/auth/api/books/status/todo,Bearer,
+/livros,page.tsx,GET,/auth/api/books/status/progress,Bearer,
+/livros,page.tsx,GET,/auth/api/books/status/completed,Bearer,
+/livros,editarLivro,PUT,/auth/api/books/{id},Body livro,
+/livros,editarLivro,PATCH,/auth/api/books/status/todo/{id},,
+/livros,editarLivro,PATCH,/auth/api/books/status/progress/{id},,
+/livros,editarLivro,PATCH,/auth/api/books/status/completed/{id},,
+/motivacao,page.tsx,POST,/auth/api/motivation/dreams,"name, description, urlImage",
+/motivacao,page.tsx,GET,/auth/api/motivation/dreams/user,Bearer,
+/motivacao,editarSonho,PUT,/auth/api/motivation/dreams/{id},,
+/motivacao,editarSonho,POST,/auth/api/motivation/dreams,Body sonho,
+MenuResumo,MenuResumo,GET,/auth/api/tasks/{YYYY-MM-DD},Bearer,Calendario
+/dashboard popup,editarCategoria,GET,/auth/api/dashboard/category/objectives/{id},,
+/dashboard popup,editarCategoria,PUT,/auth/api/categories/{id},Nome e descricao,
+/dashboard popup,editarCategoria,POST,/auth/api/categories/objective,"idCategory, idObjective",
+/dashboard popup,editarCategoria,DELETE,path composto categories/objective/{cat}/{obj},Ver codigo,
+/dashboard popup,editarCategoria,DELETE,/auth/api/categories/{id},,
+/dashboard popup,editarCategoria,GET,/auth/api/objectives/user,Bearer,
+/ajustes,page.tsx,-,localStorage,tema tipoMenuDesk,Sem API
+/ajustes,AlterarInformacoesDoUsuario,-,-,Mock nome email,API comentada
+/ajustes,VerListaDeAmigos,-,-,Mock lista,
+/ajustes,RenovacaoPopUp,-,-,Mock data,
+/ajustes,EsqueciSenha,POST,/api/authentication/forgot,userEmail,
+/ajuda,page.tsx,-,linkWpp externo,WhatsApp,

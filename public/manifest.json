@@ -1,0 +1,17 @@
+{
+  "name": "InEvolving",
+  "short_name": "InEvolving",
+  "description": "Plataforma de Gerenciamento Pessoal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F7FA",
+  "theme_color": "#1976D2",
+  "icons": [
+    {
+      "src": "/logo/logo-svg.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

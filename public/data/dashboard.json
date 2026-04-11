@@ -1,0 +1,25 @@
+{
+  "idUser": 1,
+  "urlVisionBord": null,
+  "categoryDTOList": [
+    {
+      "id": 10,
+      "categoryName": "Carreira",
+      "categoryDescription": "Metas profissionais e estudo contínuo",
+      "objectives": [
+        {
+          "id": 1,
+          "nameObjective": "Certificação cloud",
+          "descriptionObjective": "AWS Solutions Architect",
+          "statusObjective": "TODO",
+          "totNumberTasks": 12,
+          "numberTasksToDo": 5,
+          "numberTasksDone": 4,
+          "numberTasksInProgress": 2,
+          "numberTasksOverdue": 1,
+          "numberTasksCancelled": 0
+        }
+      ]
+    }
+  ]
+}

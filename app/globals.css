@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ease-liquid: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-ui: 380ms;
+  --glass-border-light: rgba(25, 118, 210, 0.22);
+  --glass-bg-light: rgba(255, 255, 255, 0.78);
+  --text-primary-light: #1a237e;
+  --accent-cyan: #00bcd4;
+  --accent-purple: #7b2cbf;
+  --accent-pink: #ff006e;
+}
+
+[data-theme="light"],
+html:not(.dark) {
+  --page-bg: #f5f7fa;
+  --page-gradient: linear-gradient(
+    135deg,
+    #f5f7fa 0%,
+    #e3f2fd 45%,
+    #f5f7fa 100%
+  );
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(25, 118, 210, 0.18);
+  --text-primary: #1a237e;
+  --text-muted: rgba(26, 35, 126, 0.65);
+  --glow-soft: 0 0 20px rgba(0, 188, 212, 0.25);
+}
+
+html.dark,
+[data-theme="dark"] {
+  --page-bg: #0f1419;
+  --page-gradient: radial-gradient(
+      ellipse 120% 80% at 20% 0%,
+      rgba(25, 118, 210, 0.15),
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 100% 60% at 100% 100%,
+      rgba(123, 44, 191, 0.12),
+      transparent 45%
+    ),
+    #0f1419;
+  --glass-bg: rgba(15, 20, 25, 0.55);
+  --glass-border: rgba(0, 188, 212, 0.2);
+  --text-primary: #ffffff;
+  --text-muted: rgba(236, 239, 241, 0.65);
+  --glow-soft: 0 0 24px rgba(255, 0, 110, 0.2);
+}
+
+@layer utilities {
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  .focus\:not-sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+@layer base {
+  html {
+    @apply antialiased scroll-smooth;
+    overflow-x: clip;
+    max-width: 100vw;
+  }
+
+  body {
+    @apply min-h-dvh min-w-0 text-[var(--text-primary)] transition-colors;
+    overflow-x: clip;
+    max-width: 100vw;
+    background: var(--page-gradient);
+    background-color: var(--page-bg);
+    background-attachment: fixed;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-cyan;
+  }
+
+  ::selection {
+    @apply bg-brand-cyan/30 text-inherit;
+  }
+
+  /* Scrollbar global em estilo liquidglass */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 188, 212, 0.55) rgba(255, 255, 255, 0.06);
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      180deg,
+      rgba(25, 118, 210, 0.6),
+      rgba(0, 188, 212, 0.68),
+      rgba(123, 44, 191, 0.58)
+    );
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.08);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      180deg,
+      rgba(25, 118, 210, 0.85),
+      rgba(0, 188, 212, 0.9),
+      rgba(255, 0, 110, 0.72)
+    );
+  }
+
+  html.dark *,
+  [data-theme="dark"] * {
+    scrollbar-color: rgba(0, 188, 212, 0.75) rgba(255, 255, 255, 0.08);
+  }
+
+  html.dark *::-webkit-scrollbar-track,
+  [data-theme="dark"] *::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  html.dark *::-webkit-scrollbar-thumb,
+  [data-theme="dark"] *::-webkit-scrollbar-thumb {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--glow-soft), 0 8px 32px rgba(10, 25, 41, 0.08);
+    transition:
+      transform var(--duration-ui) var(--ease-liquid),
+      box-shadow var(--duration-ui) var(--ease-liquid),
+      border-color var(--duration-ui) var(--ease-liquid);
+  }
+
+  .dark .glass-card {
+    box-shadow:
+      var(--glow-soft),
+      0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+      0 12px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .tap-target {
+    @apply min-h-12 min-w-12;
+  }
+
+  .animated-gradient-border {
+    background-size: 200% 200%;
+    animation: gradientShift 12s ease infinite;
+  }
+}
+
+@keyframes gradientShift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
