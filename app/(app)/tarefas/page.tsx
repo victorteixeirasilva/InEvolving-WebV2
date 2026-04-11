@@ -728,15 +728,8 @@ export default function TarefasPage() {
     const owned = categories
       .filter((c) => !c.sharedFrom)
       .map((c) => ({ id: c.id, objectives: c.objectives }));
-    const mirrored = tryMirrorNewOwnerTaskToCollaborativeStore(task, em, profile.name, owned);
-    if (mirrored) {
-      setTasks((prev) => [mirrored, ...prev]);
-      return;
-    }
-    setTasks((prev) => [task, ...prev]);
-    if (!task.sharedTask) {
-      apiTasksRef.current = [task, ...apiTasksRef.current];
-    }
+    tryMirrorNewOwnerTaskToCollaborativeStore(task, em, profile.name, owned);
+    void loadTasksForCurrentScope();
   };
 
   const handleSaved = (updated: Tarefa) => {
@@ -793,9 +786,11 @@ export default function TarefasPage() {
     const roots = (list: Tarefa[]) => list.filter(isRootKanbanTask);
     let slice: Tarefa[];
     switch (kanbanScope) {
-      case "today":
-        slice = tasks;
+      case "today": {
+        const hojeStr = formatDateEnCA(new Date());
+        slice = tasks.filter((t) => taskDateToLocalCalendarYmd(t.dateTask) === hojeStr);
         break;
+      }
       case "date":
         slice = tasks.filter((t) => taskDateToLocalCalendarYmd(t.dateTask) === scopeDate);
         break;
