@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { unstable_noStore as noStore } from "next/cache";
 import { Providers } from "@/app/providers";
 import "@/app/globals.css";
+
+/** Evita `Cache-Control: s-maxage=31536000` no HTML (CDN Hostinger guardava documento 1 ano → chunks 404). */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -63,6 +68,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  noStore();
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`}>
