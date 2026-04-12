@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ChunkLoadRecovery } from "@/components/layout/ChunkLoadRecovery";
 import { ClientRootErrorBoundary } from "@/components/layout/ClientRootErrorBoundary";
 import { StyledComponentsRegistry } from "@/styles/registry";
 import { ThemeHydration } from "@/app/theme-hydration";
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ClientRootErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <StyledComponentsRegistry>
+          <ChunkLoadRecovery />
           <ThemeHydration />
           {children}
         </StyledComponentsRegistry>
