@@ -4,44 +4,22 @@ const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
+  // Evita HTML da home em precache + NetworkFirst na URL inicial (desalinhamento de deploy / RSC).
+  cacheStartUrl: false,
+  dynamicStartUrl: false,
+  // Recarregar ao voltar a rede costuma piorar UX em redes instáveis no PWA.
+  reloadOnOnline: false,
   fallbacks: {
     document: "/offline",
   },
+  // Com fallbacks.document, o next-pwa injeta handlerDidError em cada rota de runtimeCaching.
+  // O cache padrão cobre JS/CSS/RSC; nesses pedidos o fallback não pode devolver HTML de /offline.
+  extendDefaultRuntimeCaching: false,
   workboxOptions: {
     runtimeCaching: [
       {
-        urlPattern: /\/_next\/static\/.*/i,
-        handler: "NetworkFirst",
-        options: {
-          cacheName: "next-static",
-          networkTimeoutSeconds: 5,
-          expiration: { maxEntries: 64, maxAgeSeconds: 7 * 24 * 60 * 60 },
-        },
-      },
-      {
-        urlPattern: /^https:\/\/fonts\.(?:gstatic|googleapis)\.com\/.*/i,
-        handler: "CacheFirst",
-        options: {
-          cacheName: "google-fonts",
-          expiration: { maxEntries: 4, maxAgeSeconds: 365 * 24 * 60 * 60 },
-        },
-      },
-      {
-        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
-        handler: "CacheFirst",
-        options: {
-          cacheName: "static-images",
-          expiration: { maxEntries: 64, maxAgeSeconds: 30 * 24 * 60 * 60 },
-        },
-      },
-      {
-        urlPattern: /\/api\/.*/i,
-        handler: "NetworkFirst",
-        options: {
-          cacheName: "api",
-          networkTimeoutSeconds: 10,
-          expiration: { maxEntries: 32, maxAgeSeconds: 24 * 60 * 60 },
-        },
+        urlPattern: ({ request }) => request.mode === "navigate",
+        handler: "NetworkOnly",
       },
     ],
   },

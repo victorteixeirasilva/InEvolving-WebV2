@@ -533,7 +533,7 @@ export function SobrePageContent() {
             <GlassCard className="lg:col-span-3">
               <h3 className="text-lg font-semibold text-[var(--text-primary)]">PWA instalável</h3>
               <p className="mt-2 text-sm text-[var(--text-muted)]">
-                Instale no celular, use como app nativo, com suporte a uso parcial offline e transições suaves entre
+                Instale no celular, use como app nativo e transições suaves entre
                 telas.
               </p>
             </GlassCard>
@@ -720,7 +720,7 @@ export function SobrePageContent() {
               },
               {
                 q: "Funciona bem no celular?",
-                a: "O produto é mobile-first e PWA instalável, com layout responsivo e suporte a uso parcial offline.",
+                a: "O produto é mobile-first e PWA instalável, com layout responsivo; requer conexão para carregar o conteúdo.",
               },
               {
                 q: "Como fecho plano e pagamento?",

@@ -45,7 +45,7 @@ export default function HomePage() {
           <GlassCard className="h-full sm:col-span-2 lg:col-span-1">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">PWA instalável</h2>
             <p className="mt-2 text-sm text-[var(--text-muted)]">
-              Instale no celular, use offline parcial e navegue com transições suaves.
+              Instale no celular e abra direto da tela inicial, com navegação fluida.
             </p>
           </GlassCard>
         </StaggerList>

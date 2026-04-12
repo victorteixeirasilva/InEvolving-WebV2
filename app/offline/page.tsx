@@ -14,8 +14,7 @@ export default function OfflinePage() {
       <GlassCard className="max-w-md text-center">
         <h1 className="text-xl font-bold text-[var(--text-primary)]">Sem conexão</h1>
         <p className="mt-3 text-sm text-[var(--text-muted)]">
-          Você está offline. Verifique a rede e tente novamente. Conteúdo em cache pode continuar disponível conforme a
-          estratégia PWA.
+          Não foi possível carregar esta página. Confira sua conexão com a internet e tente de novo.
         </p>
         <PrimaryLink href="/" className="mt-8 w-full">
           Ir ao início

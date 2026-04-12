@@ -30,7 +30,7 @@ export function PwaInstallPrompt() {
       role="status"
     >
       <p className="text-sm text-[var(--text-primary)]">
-        Instale o InEvolving no seu dispositivo para acesso rápido e uso offline parcial.
+        Instale o InEvolving no seu dispositivo para acesso rápido pela tela inicial.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button
