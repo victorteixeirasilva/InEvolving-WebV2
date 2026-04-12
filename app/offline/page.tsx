@@ -2,7 +2,7 @@ import { PrimaryLink } from "@/components/ui/PrimaryLink";
 import { GlassCard } from "@/components/ui/GlassCard";
 
 export const metadata = {
-  title: "Offline",
+  title: "Sem conexão",
 };
 
 export default function OfflinePage() {

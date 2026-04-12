@@ -41,7 +41,7 @@ const MARQUEE_ITEMS = [
   "Motivação",
   "PWA",
   "Colaboração",
-  "Offline parcial",
+  "Na tela inicial",
 ];
 
 function GridMesh() {

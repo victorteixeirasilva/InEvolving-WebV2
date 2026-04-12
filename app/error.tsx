@@ -2,6 +2,22 @@
 
 import { useEffect } from "react";
 
+async function clearServiceWorkerAndCachesThenReload() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    /* ignore */
+  }
+  window.location.reload();
+}
+
 /**
  * Erros nas rotas dentro do layout raiz (não substitui `layout.tsx`).
  */
@@ -37,6 +53,17 @@ export default function AppError({
           Ir ao dashboard
         </a>
       </div>
+      <p className="text-xs text-[var(--text-muted)]">
+        Se você usa o app instalado (PWA) ou a página repetir o erro após um deploy, limpe o cache do
+        site nas configurações do navegador ou use o botão abaixo uma vez.
+      </p>
+      <button
+        type="button"
+        onClick={() => void clearServiceWorkerAndCachesThenReload()}
+        className="rounded-xl border border-[var(--glass-border)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)]"
+      >
+        Limpar cache do PWA e recarregar
+      </button>
     </div>
   );
 }

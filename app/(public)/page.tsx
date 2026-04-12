@@ -5,6 +5,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { FadeInView } from "@/components/layout/ScrollReveal";
 import { StaggerList } from "@/features/animations/StaggerList";
 import { SpringPulse } from "@/components/ui/SpringPulse";
+import { APP_VERSION, APP_BUILD_TIME_ISO, formatBuildTimeForDisplay } from "@/lib/build-info";
 
 export default function HomePage() {
   return (
@@ -61,6 +62,14 @@ export default function HomePage() {
 
         <p className="text-center text-sm text-[var(--text-muted)]">
           <AnimatedLink href="/sobre">Conheça o produto</AnimatedLink>
+        </p>
+
+        <p
+          className="text-center text-xs text-[var(--text-muted)] opacity-80"
+          title={APP_BUILD_TIME_ISO ? `Build (UTC): ${APP_BUILD_TIME_ISO}` : undefined}
+        >
+          Versão {APP_VERSION}
+          {APP_BUILD_TIME_ISO ? ` · build ${formatBuildTimeForDisplay(APP_BUILD_TIME_ISO)}` : null}
         </p>
       </FadeInView>
     </div>
