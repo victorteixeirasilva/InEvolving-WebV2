@@ -4,6 +4,7 @@ import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ChunkLoadRecovery } from "@/components/layout/ChunkLoadRecovery";
 import { ClientRootErrorBoundary } from "@/components/layout/ClientRootErrorBoundary";
+import { AppToaster } from "@/components/ui/AppToaster";
 import { StyledComponentsRegistry } from "@/styles/registry";
 import { ThemeHydration } from "@/app/theme-hydration";
 
@@ -27,6 +28,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <ChunkLoadRecovery />
           <ThemeHydration />
           {children}
+          <AppToaster />
         </StyledComponentsRegistry>
       </QueryClientProvider>
     </ClientRootErrorBoundary>

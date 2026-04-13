@@ -54,6 +54,8 @@ export default function FinancasPage() {
   const [financeData, setFinanceData] = useState<ResponseFinancas>(EMPTY_FINANCE_DATA);
   const [financeLoading, setFinanceLoading] = useState(true);
   const [financeError, setFinanceError] = useState<string | null>(null);
+  /** Último GET do período concluiu com sucesso (evita intro com `EMPTY` ou corpo inválido). */
+  const [financeApiOk, setFinanceApiOk] = useState(false);
 
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -82,14 +84,19 @@ export default function FinancasPage() {
 
   useEffect(() => {
     if (!wageHydrated) return;
-    if (wage > 0) return;
+    if (!financeApiOk) return;
+    if (financeData.wage !== 0) return;
     try {
       if (localStorage.getItem(STORAGE_KEYS.financasIntroDismissed) === "1") return;
     } catch {
       return;
     }
     setIntroOpen(true);
-  }, [wageHydrated, wage]);
+  }, [wageHydrated, financeApiOk, financeData.wage]);
+
+  useEffect(() => {
+    if (financeApiOk && financeData.wage > 0) setIntroOpen(false);
+  }, [financeApiOk, financeData.wage]);
 
   const refetchFinance = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -106,6 +113,7 @@ export default function FinancasPage() {
         setFinanceData(EMPTY_FINANCE_DATA);
         setFinanceLoading(false);
         setFinanceError(null);
+        setFinanceApiOk(false);
         // TODO (contract): área logada sem token — alinhar com `/login` ou refresh de sessão.
         return;
       }
@@ -121,6 +129,7 @@ export default function FinancasPage() {
       if (!silent) {
         setFinanceLoading(true);
         setFinanceError(null);
+        setFinanceApiOk(false);
       }
 
       const start = firstDayOfMonthYmd(y, m);
@@ -132,12 +141,14 @@ export default function FinancasPage() {
       if (result.kind === "unauthorized") {
         handleUnauthorized();
         setFinanceData(EMPTY_FINANCE_DATA);
+        setFinanceApiOk(false);
         return;
       }
 
       if (result.kind === "ok") {
         setFinanceData(result.data);
         setWage(result.data.wage);
+        setFinanceApiOk(true);
         return;
       }
 
@@ -145,18 +156,21 @@ export default function FinancasPage() {
         // TODO (UX): mensagem do back quando o contrato padronizar corpo de erro.
         setFinanceError("Resposta da API em formato inesperado.");
         setFinanceData(EMPTY_FINANCE_DATA);
+        setFinanceApiOk(false);
         return;
       }
 
       if (result.kind === "network_error") {
         setFinanceError("Falha de conexão. Verifique sua internet.");
         setFinanceData(EMPTY_FINANCE_DATA);
+        setFinanceApiOk(false);
         return;
       }
 
       // TODO (UX): mapear 403/404/422 para mensagens específicas quando existir contrato.
       setFinanceError("Não foi possível carregar os dados de finanças. Tente novamente.");
       setFinanceData(EMPTY_FINANCE_DATA);
+      setFinanceApiOk(false);
     },
     [selectedMonth, handleUnauthorized]
   );

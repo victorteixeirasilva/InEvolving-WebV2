@@ -685,6 +685,8 @@ export default function TarefasPage() {
           apiTasksRef.current = arr;
         }
       }
+
+      void loadTasksForCurrentScope();
     } catch {
       window.alert("Falha de conexão ao atualizar o status.");
       void loadTasksForCurrentScope();
@@ -755,6 +757,7 @@ export default function TarefasPage() {
       }
       return next;
     });
+    void loadTasksForCurrentScope();
   };
 
   const handleDeletedTask = (taskId: number | string, meta?: { seriesRemoved?: boolean }) => {
