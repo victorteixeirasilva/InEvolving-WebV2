@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { LivrosKanbanBoard } from "@/components/features/livros/LivrosKanbanBoard";
 import { STORAGE_KEYS } from "@/lib/constants";
 import { fetchAllBooksForUser } from "@/lib/books/fetch-books";
-import type { Livro } from "@/lib/types/models";
+import type { Livro, LivroStatus } from "@/lib/types/models";
+import type { CategoryStatus } from "@/components/features/livros/LivrosKanbanBoard";
 import { cn } from "@/lib/utils";
 
 export default function LivrosPage() {
@@ -20,8 +21,11 @@ export default function LivrosPage() {
   }, [router]);
 
   const [books, setBooks] = useState<Livro[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [categoryStates, setCategoryStates] = useState<Record<LivroStatus, CategoryStatus>>({
+    PENDENTE_LEITURA: { loading: true, error: null },
+    LENDO: { loading: true, error: null },
+    LEITURA_FINALIZADA: { loading: true, error: null },
+  });
 
   const refetchBooks = useCallback(async (): Promise<Livro[] | null> => {
     let jwt = "";
@@ -33,84 +37,74 @@ export default function LivrosPage() {
 
     if (!jwt) {
       setBooks([]);
-      setFetchError(null);
-      // TODO (contract): área logada sem token — alinhar com `/login` ou refresh de sessão.
+      setCategoryStates({
+        PENDENTE_LEITURA: { loading: false, error: null },
+        LENDO: { loading: false, error: null },
+        LEITURA_FINALIZADA: { loading: false, error: null },
+      });
       return null;
     }
+
+    // Set all to loading
+    setCategoryStates({
+      PENDENTE_LEITURA: { loading: true, error: null },
+      LENDO: { loading: true, error: null },
+      LEITURA_FINALIZADA: { loading: true, error: null },
+    });
 
     const result = await fetchAllBooksForUser(jwt);
 
-    if (result.kind === "unauthorized") {
-      handleUnauthorized();
-      setBooks([]);
-      return null;
-    }
+    const newBooks: Livro[] = [];
+    const newStates: Record<LivroStatus, CategoryStatus> = {
+      PENDENTE_LEITURA: { loading: true, error: null },
+      LENDO: { loading: true, error: null },
+      LEITURA_FINALIZADA: { loading: true, error: null },
+    };
 
-    if (result.kind === "ok") {
-      setBooks(result.books);
-      setFetchError(null);
-      return result.books;
-    }
+    const processResult = (
+      res: any,
+      status: LivroStatus,
+      errorMsg: string
+    ) => {
+      if (res.kind === "unauthorized") {
+        handleUnauthorized();
+        newStates[status] = { loading: false, error: "Não autorizado" };
+      } else if (res.kind === "ok") {
+        newBooks.push(...res.books);
+        newStates[status] = { loading: false, error: null };
+      } else if (res.kind === "network_error") {
+        newStates[status] = { loading: false, error: "Erro de conexão" };
+      } else if (res.kind === "http_error") {
+        newStates[status] = { loading: false, error: `Erro ${res.status}` };
+      } else {
+        newStates[status] = { loading: false, error: errorMsg };
+      }
+    };
 
-    if (result.kind === "network_error") {
-      setFetchError("Sem conexão ou o servidor não respondeu. Tente novamente.");
-      // TODO (contract): retry/backoff e mensagem específica por tipo de falha de rede.
-      return null;
-    }
+    processResult(result.todo, "PENDENTE_LEITURA", "Erro ao carregar pendentes");
+    processResult(result.progress, "LENDO", "Erro ao carregar em andamento");
+    processResult(result.completed, "LEITURA_FINALIZADA", "Erro ao carregar finalizados");
 
-    if (result.kind === "invalid_body") {
-      setFetchError("Resposta inesperada do servidor ao listar livros.");
-      // TODO (contract): formato alternativo (wrapper, paginação).
-      return null;
-    }
-
-    if (result.kind === "http_error") {
-      setFetchError(`Não foi possível carregar os livros (HTTP ${result.status}).`);
-      // TODO (contract): corpo de erro JSON e códigos adicionais (400, 422, 429, 5xx).
-      return null;
-    }
-
-    return null;
+    setBooks(newBooks);
+    setCategoryStates(newStates);
+    return newBooks;
   }, [handleUnauthorized]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      await refetchBooks();
-      if (!cancelled) setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    refetchBooks();
   }, [refetchBooks]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pt-4 md:pt-6">
       <h1 className="text-2xl font-bold">Livros</h1>
 
-      {loading ? (
-        <p className="text-sm text-[var(--text-muted)]">Carregando livros…</p>
-      ) : fetchError ? (
-        <div
-          className={cn(
-            "rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700",
-            "dark:text-red-300"
-          )}
-          role="alert"
-        >
-          {fetchError}
-        </div>
-      ) : null}
-
-      {!loading && (
-        <LivrosKanbanBoard
-          books={books}
-          setBooks={setBooks}
-          refetchBooks={refetchBooks}
-          onUnauthorized={handleUnauthorized}
-        />
-      )}
+      <LivrosKanbanBoard
+        books={books}
+        setBooks={setBooks}
+        categoryStates={categoryStates}
+        refetchBooks={refetchBooks}
+        onUnauthorized={handleUnauthorized}
+      />
     </div>
   );
 }
