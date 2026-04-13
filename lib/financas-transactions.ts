@@ -9,20 +9,14 @@ export function mergeFinancasTransactionsForMonth(
   data: ResponseFinancas,
   monthKey: string
 ): FinancaTransacaoView[] {
-  const m = monthKey;
-  const toMonth = (d: string) => d.slice(0, 7);
-
   const rows: FinancaTransacaoView[] = [];
   for (const t of data.transactionsCostOfLiving) {
-    if (toMonth(t.date) !== m) continue;
     rows.push({ ...t, id: txIdKey(t.id), category: "cost" });
   }
   for (const t of data.transactionsInvestment) {
-    if (toMonth(t.date) !== m) continue;
     rows.push({ ...t, id: txIdKey(t.id), category: "invest" });
   }
   for (const t of data.transactionsExtraAdded) {
-    if (toMonth(t.date) !== m) continue;
     rows.push({ ...t, id: txIdKey(t.id), category: "extra" });
   }
   return rows;
