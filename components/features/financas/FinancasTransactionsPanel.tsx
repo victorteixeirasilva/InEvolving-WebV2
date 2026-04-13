@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/Button";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { STORAGE_KEYS } from "@/lib/constants";
+import { appToast } from "@/lib/app-toast";
+import { deleteFinanceTransaction } from "@/lib/finance/delete-finance-transaction";
 import { postFinanceTransaction } from "@/lib/finance/post-finance-transaction";
 import {
   appendLocalTransaction,
@@ -82,10 +84,12 @@ function SortableTxRow({
   row,
   onRemove,
   onDuplicate,
+  removeBusy,
 }: {
   row: FinancaTransacaoView;
-  onRemove: (id: string) => void;
+  onRemove: (id: string) => void | Promise<void>;
   onDuplicate: (row: FinancaTransacaoView) => void;
+  removeBusy?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.id,
@@ -143,8 +147,9 @@ function SortableTxRow({
           </button>
           <button
             type="button"
-            onClick={() => onRemove(row.id)}
-            className="inline-flex rounded-lg border border-red-500/30 p-1.5 text-red-600 hover:bg-red-500/10 dark:text-red-400"
+            onClick={() => void onRemove(row.id)}
+            disabled={removeBusy}
+            className="inline-flex rounded-lg border border-red-500/30 p-1.5 text-red-600 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-400"
             aria-label={`Remover ${row.description}`}
           >
             <TrashIcon className="h-4 w-4" aria-hidden />
@@ -170,13 +175,22 @@ export function FinancasTransactionsPanel({
   onUnauthorized,
 }: FinancasTransactionsPanelProps) {
   const [localAdds, setLocalAdds] = useState<FinancaTransacaoView[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalAdds(loadLocalAdds(selectedMonth));
   }, [selectedMonth]);
 
+  /** Com sessão, transações vêm só do GET do período; sem JWT mantém rascunhos locais. */
   const merged = useMemo(() => {
     const api = mergeFinancasTransactionsForMonth(data, selectedMonth);
+    let jwt = "";
+    try {
+      jwt = String(localStorage.getItem(STORAGE_KEYS.token) ?? "").trim();
+    } catch {
+      /* ignore */
+    }
+    if (jwt) return api;
     return [...api, ...localAdds];
   }, [data, selectedMonth, localAdds]);
 
@@ -241,7 +255,7 @@ export function FinancasTransactionsPanel({
     persist(nextOrder, hidden);
   };
 
-  const onRemove = (id: string) => {
+  const onRemove = async (id: string) => {
     if (id.startsWith("local-")) {
       const row = byId.get(id);
       if (row) {
@@ -256,10 +270,41 @@ export function FinancasTransactionsPanel({
       persist(nextOrder, hidden);
       return;
     }
-    const nextHidden = new Set(hidden);
-    nextHidden.add(id);
-    setHidden(nextHidden);
-    persist(order, nextHidden);
+
+    let jwt = "";
+    try {
+      jwt = String(localStorage.getItem(STORAGE_KEYS.token) ?? "").trim();
+    } catch {
+      /* ignore */
+    }
+
+    if (!jwt) {
+      const nextHidden = new Set(hidden);
+      nextHidden.add(id);
+      setHidden(nextHidden);
+      persist(order, nextHidden);
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      const result = await deleteFinanceTransaction(jwt, id);
+      if (result.kind === "unauthorized") {
+        onUnauthorized();
+        return;
+      }
+      if (result.kind === "network_error") {
+        appToast.error("Falha de conexão. Verifique sua internet.");
+        return;
+      }
+      if (result.kind !== "ok" && result.kind !== "ok_no_body") {
+        appToast.error("Não foi possível remover a transação. Tente novamente.");
+        return;
+      }
+      await refetchFinance();
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const openCreateForm = () => {
@@ -382,7 +427,13 @@ export function FinancasTransactionsPanel({
                 const row = byId.get(id);
                 if (!row) return null;
                 return (
-                  <SortableTxRow key={id} row={row} onRemove={onRemove} onDuplicate={openDuplicateForm} />
+                  <SortableTxRow
+                    key={id}
+                    row={row}
+                    onRemove={onRemove}
+                    onDuplicate={openDuplicateForm}
+                    removeBusy={deletingId === id}
+                  />
                 );
               })}
             </ul>
