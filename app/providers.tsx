@@ -7,6 +7,7 @@ import { ClientRootErrorBoundary } from "@/components/layout/ClientRootErrorBoun
 import { AppToaster } from "@/components/ui/AppToaster";
 import { StyledComponentsRegistry } from "@/styles/registry";
 import { ThemeHydration } from "@/app/theme-hydration";
+import { PomodoroManager } from "@/components/features/pomodoro/PomodoroManager";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -27,6 +28,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <StyledComponentsRegistry>
           <ChunkLoadRecovery />
           <ThemeHydration />
+          <PomodoroManager />
           {children}
           <AppToaster />
         </StyledComponentsRegistry>

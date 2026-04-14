@@ -326,8 +326,6 @@ function DroppableColumn({
   isDropTarget,
   isSourceColumn,
   isDraggingBoard,
-  loading,
-  error,
 }: {
   status: LivroStatus;
   orderedBooks: Livro[];
@@ -336,26 +334,11 @@ function DroppableColumn({
   isDropTarget: boolean;
   isSourceColumn: boolean;
   isDraggingBoard: boolean;
-  loading: boolean;
-  error: string | null;
 }) {
   const meta = STATUS_META[status];
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const itemIds = orderedBooks.map((b) => livroIdKey(b.id));
   const empty = orderedBooks.length === 0;
-
-  const getEmptyMessage = (s: LivroStatus) => {
-    switch (s) {
-      case "PENDENTE_LEITURA":
-        return "Você ainda não adicionou livros para ler";
-      case "LENDO":
-        return "Nenhum livro em andamento no momento";
-      case "LEITURA_FINALIZADA":
-        return "Nenhum livro finalizado ainda";
-      default:
-        return "Nenhum livro";
-    }
-  };
 
   return (
     <div
@@ -379,33 +362,23 @@ function DroppableColumn({
         className={cn(
           "flex flex-col gap-2 overflow-y-auto p-2 transition-colors duration-200",
           "flex-1",
-          empty || loading || error ? "min-h-[160px]" : "min-h-[80px]",
+          empty ? "min-h-[160px]" : "min-h-[80px]",
           isDropTarget && "border border-dashed border-brand-cyan/50 bg-brand-cyan/[0.07]",
           isOver && isDropTarget && "bg-brand-cyan/15"
         )}
       >
-        {loading ? (
-          <div className="flex flex-1 items-center justify-center py-6">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-cyan border-t-transparent" />
-          </div>
-        ) : error ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-            <p className="text-xs font-medium text-red-500 dark:text-red-400">{error}</p>
-          </div>
-        ) : (
-          <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-            {empty ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-1 py-6 text-center">
-                <p className="px-4 text-xs text-[var(--text-muted)]">{getEmptyMessage(status)}</p>
-                {isDropTarget && <p className="text-[11px] font-semibold text-brand-cyan">Solte aqui</p>}
-              </div>
-            ) : (
-              orderedBooks.map((b) => (
-                <SortableBookCardDesktop key={livroIdKey(b.id)} book={b} onEdit={onEdit} onDelete={onDelete} />
-              ))
-            )}
-          </SortableContext>
-        )}
+        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+          {empty ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-1 py-6 text-center">
+              <p className="text-xs text-[var(--text-muted)]">Nenhum livro</p>
+              {isDropTarget && <p className="text-[11px] font-semibold text-brand-cyan">Solte aqui</p>}
+            </div>
+          ) : (
+            orderedBooks.map((b) => (
+              <SortableBookCardDesktop key={livroIdKey(b.id)} book={b} onEdit={onEdit} onDelete={onDelete} />
+            ))
+          )}
+        </SortableContext>
       </div>
     </div>
   );
@@ -417,36 +390,16 @@ function MobileKanban({
   onEdit,
   onDelete,
   onStatusChange,
-  loading,
-  error,
-  activeCol,
-  setActiveCol,
 }: {
   books: Livro[];
   columnOrder: Record<LivroStatus, string[]>;
   onEdit: (b: Livro) => void;
   onDelete: (id: string | number) => void;
   onStatusChange: (id: string | number, status: LivroStatus) => void;
-  loading: boolean;
-  error: string | null;
-  activeCol: LivroStatus;
-  setActiveCol: (s: LivroStatus) => void;
 }) {
+  const [activeCol, setActiveCol] = useState<LivroStatus>("PENDENTE_LEITURA");
   const colBooks = orderedLivrosForStatus(activeCol, books, columnOrder);
   const itemIds = colBooks.map((b) => livroIdKey(b.id));
-
-  const getEmptyMessage = (s: LivroStatus) => {
-    switch (s) {
-      case "PENDENTE_LEITURA":
-        return "Você ainda não adicionou livros para ler";
-      case "LENDO":
-        return "Nenhum livro em andamento no momento";
-      case "LEITURA_FINALIZADA":
-        return "Nenhum livro finalizado ainda";
-      default:
-        return "Nenhum livro";
-    }
-  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -479,68 +432,41 @@ function MobileKanban({
           );
         })}
       </div>
-
-      <div className="flex flex-col gap-2 min-h-[200px]">
-        {loading ? (
-          <div className="flex flex-1 items-center justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-cyan border-t-transparent" />
-          </div>
-        ) : error ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-            <p className="text-sm font-medium text-red-500 dark:text-red-400">{error}</p>
-          </div>
-        ) : (
-          <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-            {colBooks.length === 0 ? (
-              <p className="py-12 text-center text-sm text-[var(--text-muted)] px-6">
-                {getEmptyMessage(activeCol)}
-              </p>
-            ) : (
-              colBooks.map((b) => (
-                <SortableBookCardMobile
-                  key={livroIdKey(b.id)}
-                  book={b}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onStatusChange={onStatusChange}
-                  activeCol={activeCol}
-                />
-              ))
-            )}
-          </SortableContext>
-        )}
-      </div>
+      <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+        <div className="flex flex-col gap-2">
+          {colBooks.length === 0 ? (
+            <p className="py-8 text-center text-sm text-[var(--text-muted)]">Nenhum livro nesta coluna</p>
+          ) : (
+            colBooks.map((b) => (
+              <SortableBookCardMobile
+                key={livroIdKey(b.id)}
+                book={b}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onStatusChange={onStatusChange}
+                activeCol={activeCol}
+              />
+            ))
+          )}
+        </div>
+      </SortableContext>
     </div>
   );
 }
 
-export type CategoryStatus = {
-  loading: boolean;
-  error: string | null;
-};
-
 export type LivrosKanbanBoardProps = {
   books: Livro[];
   setBooks: Dispatch<SetStateAction<Livro[]>>;
-  categoryStates: Record<LivroStatus, CategoryStatus>;
   refetchBooks: () => Promise<Livro[] | null>;
   onUnauthorized: () => void;
 };
 
-export function LivrosKanbanBoard({
-  books,
-  setBooks,
-  categoryStates,
-  refetchBooks,
-  onUnauthorized,
-}: LivrosKanbanBoardProps) {
+export function LivrosKanbanBoard({ books, setBooks, refetchBooks, onUnauthorized }: LivrosKanbanBoardProps) {
   const [columnOrder, setColumnOrder] = useState<Record<LivroStatus, string[]>>(emptyLivrosKanbanOrder);
   const [draggingBook, setDraggingBook] = useState<Livro | null>(null);
   const [overWhileDrag, setOverWhileDrag] = useState<UniqueIdentifier | null>(null);
   const orderHydrated = useRef(false);
   const isLg = useIsLgBreakpoint();
-
-  const [activeCol, setActiveCol] = useState<LivroStatus>("PENDENTE_LEITURA");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Livro | null>(null);
@@ -850,8 +776,6 @@ export function LivrosKanbanBoard({
                   isDropTarget={isTarget}
                   isSourceColumn={isSource}
                   isDraggingBoard={isDraggingBoard}
-                  loading={categoryStates[status].loading}
-                  error={categoryStates[status].error}
                 />
               );
             })}
@@ -863,10 +787,6 @@ export function LivrosKanbanBoard({
             onEdit={openEdit}
             onDelete={handleDelete}
             onStatusChange={handleStatusChange}
-            loading={categoryStates[activeCol].loading}
-            error={categoryStates[activeCol].error}
-            activeCol={activeCol}
-            setActiveCol={setActiveCol}
           />
         )}
         <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18,0.67,0.6,1.22)" }}>

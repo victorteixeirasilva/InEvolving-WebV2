@@ -6,10 +6,12 @@ import { Bars3Icon } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 import { BOTTOM_NAV } from "@/components/layout/nav-config";
 import { useMenuStore } from "@/stores/menu-store";
+import { usePomodoroStore } from "@/stores/pomodoro-store";
 
 export function BottomNav() {
   const pathname = usePathname();
   const setDrawerOpen = useMenuStore((s) => s.setDrawerOpen);
+  const setIsPomodoroExpanded = usePomodoroStore((s) => s.setIsExpanded);
 
   return (
     <nav
@@ -25,6 +27,36 @@ export function BottomNav() {
         {BOTTOM_NAV.map(({ href, label, bottomNavLabel, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           const text = bottomNavLabel ?? label;
+          
+          if (href === "#pomodoro") {
+            return (
+              <li key={href} className="min-w-0 flex-1 basis-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPomodoroExpanded(true);
+                    setDrawerOpen(true);
+                    setTimeout(() => {
+                      document.getElementById("pomodoro-sidebar")?.scrollIntoView({ behavior: "smooth" });
+                    }, 300);
+                  }}
+                  className={cn(
+                    "flex min-h-12 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg py-1",
+                    "text-[10px] font-medium leading-tight text-[var(--text-muted)] transition-all duration-[380ms] ease-liquid",
+                    "xs:text-[11px] active:text-brand-cyan"
+                  )}
+                  aria-label={label}
+                  title={label}
+                >
+                  <Icon className="h-6 w-6 shrink-0" aria-hidden />
+                  <span className="block max-w-full break-words px-0.5 text-center">
+                    {text}
+                  </span>
+                </button>
+              </li>
+            );
+          }
+
           return (
             <li key={href} className="min-w-0 flex-1 basis-0">
               <Link

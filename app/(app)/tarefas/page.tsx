@@ -822,7 +822,6 @@ export default function TarefasPage() {
     scopeDate,
     scopeObjectiveId,
     scopeCategoryId,
-    scopeCategoryDateFilter,
     categoryDateFilterMatchYmd,
     objectiveIdsForCategory,
   ]);
@@ -856,7 +855,6 @@ export default function TarefasPage() {
     scopeDate,
     scopeObjectiveId,
     scopeCategoryId,
-    scopeCategoryDateFilter,
     categoryDateFilterMatchYmd,
     objectives,
     categories,
@@ -891,7 +889,7 @@ export default function TarefasPage() {
       default:
         return base;
     }
-  }, [lateTasksFromApi, sortOverdue, tasks]);
+  }, [lateTasksFromApi, sortOverdue]);
 
   const viewTabs: { key: View; label: string; icon: React.ElementType }[] = [
     { key: "kanban",  label: "Quadro",    icon: ViewColumnsIcon },

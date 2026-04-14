@@ -7,6 +7,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/layout/nav-config";
 import { useMenuStore } from "@/stores/menu-store";
+import { PomodoroSidebar } from "@/components/features/pomodoro/PomodoroSidebar";
 
 export function MobileDrawer() {
   const open = useMenuStore((s) => s.drawerOpen);
@@ -36,9 +37,11 @@ export function MobileDrawer() {
               <XMarkIcon className="h-7 w-7" />
             </Dialog.Close>
           </div>
+          <PomodoroSidebar />
           <nav className="flex-1 overflow-y-auto p-3" aria-label="Navegação">
             <ul className="flex flex-col gap-1">
               {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+                if (href === "#pomodoro") return null;
                 const active = pathname === href || pathname.startsWith(`${href}/`);
                 return (
                   <li key={href}>

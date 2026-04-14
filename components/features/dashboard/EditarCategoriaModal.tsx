@@ -150,7 +150,7 @@ export function EditarCategoriaModal({
     return () => {
       cancelled = true;
     };
-  }, [open, category?.id, reset, router, onOpenChange]);
+  }, [open, category, reset, router, onOpenChange]);
 
   const objectivesDirty =
     localObjectives.length !== initialObjectiveIds.current.size ||

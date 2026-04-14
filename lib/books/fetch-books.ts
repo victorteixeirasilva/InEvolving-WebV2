@@ -84,21 +84,43 @@ export function fetchBooksCompleted(jwt: string) {
   return fetchBooksByStatusPath(jwt, "status/completed", "completed");
 }
 
-export type FetchAllBooksResult = {
-  todo: FetchBooksListResult;
-  progress: FetchBooksListResult;
-  completed: FetchBooksListResult;
-};
-
 /**
- * Carrega as três listas de forma independente e devolve os estados individuais.
+ * Carrega as três listas e combina os resultados em um único FetchBooksListResult.
+ * É resiliente a falhas parciais (ex: se uma lista der 404, ainda mostra as outras).
  */
-export async function fetchAllBooksForUser(jwtToken: string): Promise<FetchAllBooksResult> {
+export async function fetchAllBooksForUser(jwtToken: string): Promise<FetchBooksListResult> {
   const [todo, progress, completed] = await Promise.all([
     fetchBooksTodo(jwtToken),
     fetchBooksProgress(jwtToken),
     fetchBooksCompleted(jwtToken),
   ]);
 
-  return { todo, progress, completed };
+  const results = [todo, progress, completed];
+
+  // Se houver erro de autorização em QUALQUER uma, é fatal.
+  if (results.some((r) => r.kind === "unauthorized")) {
+    return { kind: "unauthorized" };
+  }
+
+  const books: Livro[] = [];
+  let hasAtLeastOneOk = false;
+  let firstError: FetchBooksListResult | null = null;
+
+  for (const r of results) {
+    if (r.kind === "ok") {
+      books.push(...r.books);
+      hasAtLeastOneOk = true;
+    } else if (!firstError) {
+      firstError = r;
+    }
+  }
+
+  // Se conseguimos carregar ao menos uma lista com sucesso, retornamos "ok" com o que temos.
+  // Isso trata casos onde um endpoint pode dar 404 por estar vazio ou falha temporária em uma das rotas.
+  if (hasAtLeastOneOk) {
+    return { kind: "ok", books };
+  }
+
+  // Se nenhuma deu "ok", retornamos o primeiro erro encontrado.
+  return firstError || { kind: "http_error", status: 500 };
 }
