@@ -29,7 +29,7 @@ export function PomodoroSidebar() {
     reset,
   } = usePomodoroStore();
 
-  const requestNotifications = async () => {
+  const requestNotifications = React.useCallback(async () => {
     if (!("Notification" in window)) {
       appToast.error("Notificações não suportadas.");
       return;
@@ -42,9 +42,9 @@ export function PomodoroSidebar() {
       setNotificationsEnabled(false);
       appToast.error("Permissão negada.");
     }
-  };
+  }, [setNotificationsEnabled]);
 
-  const toggleTimer = () => {
+  const toggleTimer = React.useCallback(() => {
     // Prime the audio context on user gesture to avoid autoplay blocking
     if (typeof window !== "undefined") {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -60,13 +60,13 @@ export function PomodoroSidebar() {
       setEndTime(null);
     }
     setIsActive(!isActive);
-  };
+  }, [isActive, timeLeft, setEndTime, setIsActive]);
 
-  const formatTime = (seconds: number) => {
+  const formatTime = React.useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
+  }, []);
 
   const progress = 1 - timeLeft / ((mode === "focus" ? focusTime : restTime) * 60);
 

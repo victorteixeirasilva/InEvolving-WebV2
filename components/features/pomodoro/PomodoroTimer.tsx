@@ -95,7 +95,7 @@ export function PomodoroTimer() {
     }
   };
 
-  const sendNotification = async (title: string, body: string) => {
+  const sendNotification = React.useCallback(async (title: string, body: string) => {
     if (notificationsEnabled && Notification.permission === "granted") {
       // Try to use ServiceWorker for better PWA support if available
       if ("serviceWorker" in navigator) {
@@ -119,7 +119,7 @@ export function PomodoroTimer() {
         icon: "/logo/logo-svg.svg",
       });
     }
-  };
+  }, [notificationsEnabled]);
 
   const switchMode = React.useCallback(() => {
     const nextMode = mode === "focus" ? "rest" : "focus";
@@ -137,7 +137,7 @@ export function PomodoroTimer() {
     playChime();
     sendNotification(title, body);
     appToast.success(title);
-  }, [mode, focusTime, restTime, notificationsEnabled]);
+  }, [mode, focusTime, restTime, sendNotification]);
 
   React.useEffect(() => {
     if (isActive && timeLeft > 0) {

@@ -35,42 +35,7 @@ export function PomodoroManager() {
     return () => clearInterval(interval);
   }, [isActive, tick]);
 
-  // Handle Alarm Loop
-  React.useEffect(() => {
-    if (isAlarmPlaying) {
-      // Play immediately
-      playChime();
-      // Then set interval for repetition
-      alarmIntervalRef.current = setInterval(() => {
-        playChime();
-      }, 3000); // Repeat every 3 seconds
-    } else {
-      if (alarmIntervalRef.current) {
-        clearInterval(alarmIntervalRef.current);
-        alarmIntervalRef.current = null;
-      }
-    }
-
-    return () => {
-      if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
-    };
-  }, [isAlarmPlaying]);
-
-  // Handle visibility change to sync timer
-  React.useEffect(() => {
-    const handleVisibilityChange = () => {
-      const { isActive, endTime, setTimeLeft } = usePomodoroStore.getState();
-      if (document.visibilityState === "visible" && isActive && endTime) {
-        const now = Date.now();
-        const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
-        setTimeLeft(remaining);
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
-
-  const playChime = () => {
+  const playChime = React.useCallback(() => {
     try {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -90,9 +55,9 @@ export function PomodoroManager() {
       osc.start();
       osc.stop(ctx.currentTime + 1);
     } catch (e) {}
-  };
+  }, []);
 
-  const sendNotification = async (title: string, body: string) => {
+  const sendNotification = React.useCallback(async (title: string, body: string) => {
     if (notificationsEnabled && Notification.permission === "granted") {
       if ("serviceWorker" in navigator) {
         const reg = await navigator.serviceWorker.ready;
@@ -110,7 +75,42 @@ export function PomodoroManager() {
       }
       new Notification(title, { body, icon: "/logo/logo-svg.svg" });
     }
-  };
+  }, [notificationsEnabled]);
+
+  // Handle Alarm Loop
+  React.useEffect(() => {
+    if (isAlarmPlaying) {
+      // Play immediately
+      playChime();
+      // Then set interval for repetition
+      alarmIntervalRef.current = setInterval(() => {
+        playChime();
+      }, 3000); // Repeat every 3 seconds
+    } else {
+      if (alarmIntervalRef.current) {
+        clearInterval(alarmIntervalRef.current);
+        alarmIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
+    };
+  }, [isAlarmPlaying, playChime]);
+
+  // Handle visibility change to sync timer
+  React.useEffect(() => {
+    const handleVisibilityChange = () => {
+      const { isActive, endTime, setTimeLeft } = usePomodoroStore.getState();
+      if (document.visibilityState === "visible" && isActive && endTime) {
+        const now = Date.now();
+        const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+        setTimeLeft(remaining);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   // Handle Mode Switch when timeLeft reaches 0
   React.useEffect(() => {
@@ -138,7 +138,7 @@ export function PomodoroManager() {
       sendNotification(title, body);
       appToast.success(title);
     }
-  }, [timeLeft, isActive, mode, focusTime, restTime, setMode, setTimeLeft, setEndTime, setIsActive, setIsAlarmPlaying]);
+  }, [timeLeft, isActive, mode, focusTime, restTime, setMode, setTimeLeft, setEndTime, setIsActive, setIsAlarmPlaying, sendNotification]);
 
   return null;
 }

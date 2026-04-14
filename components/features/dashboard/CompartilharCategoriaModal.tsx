@@ -53,7 +53,7 @@ export function CompartilharCategoriaModal({
   const activeShares = useMemo(() => {
     if (!open || typeof window === "undefined" || !categorySnapshot || !ownerEmail) return [];
     return listActiveSharesForCategory(categorySnapshot.id, ownerEmail);
-  }, [open, categorySnapshot?.id, ownerEmail, shareListTick]);
+  }, [open, categorySnapshot, ownerEmail, shareListTick]);
 
   const filteredFriends = useMemo(() => {
     const q = search.trim().toLowerCase();

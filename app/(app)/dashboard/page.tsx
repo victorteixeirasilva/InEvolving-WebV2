@@ -148,7 +148,7 @@ export default function DashboardPage() {
     if (!dashboardData) return [];
     const shared = loadAcceptedSharedCategories().map((x) => x.category);
     return [...dashboardData.categoryDTOList, ...shared];
-  }, [dashboardData, sharedCategoriesTick]);
+  }, [dashboardData]);
 
   const openCategory = (c: Category) => {
     try {
