@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/layout/nav-config";
+import { PomodoroSidebar } from "@/components/features/pomodoro/PomodoroSidebar";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -23,8 +24,10 @@ export function AppSidebar() {
           className="h-9 w-auto"
         />
       </Link>
-      <nav className="flex flex-1 flex-col gap-1 px-3">
+      <PomodoroSidebar />
+      <nav className="mt-4 flex flex-1 flex-col gap-1 overflow-y-auto px-3">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          if (href === "#pomodoro") return null;
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
