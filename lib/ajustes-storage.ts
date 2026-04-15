@@ -4,6 +4,10 @@ export type AjustesProfile = {
   name: string;
   email: string;
   phone: string;
+  cpf: string;
+  profilePhotoDataUrl: string;
+  birthDate: string;
+  billingAddress: string;
 };
 
 export type Amigo = {
@@ -15,6 +19,10 @@ const defaultProfile: AjustesProfile = {
   name: "",
   email: "",
   phone: "",
+  cpf: "",
+  profilePhotoDataUrl: "",
+  birthDate: "",
+  billingAddress: "",
 };
 
 export function loadAjustesProfile(): AjustesProfile {
@@ -29,6 +37,10 @@ export function loadAjustesProfile(): AjustesProfile {
       name: String(o.name ?? "").trim(),
       email: String(o.email ?? "").trim(),
       phone: String(o.phone ?? "").trim(),
+      cpf: String(o.cpf ?? "").trim(),
+      profilePhotoDataUrl: String(o.profilePhotoDataUrl ?? "").trim(),
+      birthDate: String(o.birthDate ?? "").trim(),
+      billingAddress: String(o.billingAddress ?? "").trim(),
     };
   } catch {
     return { ...defaultProfile };

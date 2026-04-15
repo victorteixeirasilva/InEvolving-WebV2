@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { ForgotPasswordModal } from "@/components/features/auth/ForgotPasswordModal";
 import { Button } from "@/components/ui/Button";
+import { DateField } from "@/components/ui/DateField";
 import { DevSectionNotice } from "@/components/ui/DevSectionNotice";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Input } from "@/components/ui/Input";
@@ -43,7 +44,15 @@ function readLoginEmail(): string {
 
 export function AjustesClient() {
   const { mode, toggle } = useThemeStore();
-  const [profile, setProfile] = useState<AjustesProfile>({ name: "", email: "", phone: "" });
+  const [profile, setProfile] = useState<AjustesProfile>({
+    name: "",
+    email: "",
+    phone: "",
+    cpf: "",
+    profilePhotoDataUrl: "",
+    birthDate: "",
+    billingAddress: "",
+  });
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
@@ -81,6 +90,33 @@ export function AjustesClient() {
 
   const forgotInitialEmail = profile.email.trim() || readLoginEmail();
 
+  const handleCpfChange = (rawValue: string) => {
+    const digits = rawValue.replace(/\D/g, "").slice(0, 11);
+    const masked = digits
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+    setProfile((p) => ({ ...p, cpf: masked }));
+  };
+
+  const handleProfilePhotoFile = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setProfileMsg("Selecione uma imagem válida para foto de perfil.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const next = String(reader.result ?? "");
+      setProfile((p) => ({ ...p, profilePhotoDataUrl: next }));
+      setProfileMsg(null);
+    };
+    reader.onerror = () => {
+      setProfileMsg("Não foi possível carregar a foto de perfil.");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setProfileMsg(null);
@@ -94,6 +130,11 @@ export function AjustesClient() {
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email.trim())) {
       setProfileMsg("E-mail inválido.");
+      return;
+    }
+    const cpfDigits = profile.cpf.replace(/\D/g, "");
+    if (cpfDigits.length > 0 && cpfDigits.length !== 11) {
+      setProfileMsg("CPF inválido. Informe os 11 dígitos.");
       return;
     }
     if (pwd || pwd2) {
@@ -110,6 +151,10 @@ export function AjustesClient() {
       name: profile.name.trim(),
       email: profile.email.trim(),
       phone: profile.phone.trim(),
+      cpf: profile.cpf.trim(),
+      profilePhotoDataUrl: profile.profilePhotoDataUrl.trim(),
+      birthDate: profile.birthDate.trim(),
+      billingAddress: profile.billingAddress.trim(),
     };
     setProfile(next);
     saveAjustesProfile(next);
@@ -209,6 +254,89 @@ export function AjustesClient() {
               onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
               autoComplete="email"
               className="py-2.5"
+            />
+          </div>
+          <div>
+            <label htmlFor="ajuste-foto" className="mb-1 block text-xs font-medium text-[var(--text-primary)]">
+              Foto de perfil
+            </label>
+            <div className="flex items-center gap-3">
+              <div className="h-14 w-14 overflow-hidden rounded-full border border-[var(--glass-border)] bg-[var(--glass-bg)]">
+                {profile.profilePhotoDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profile.profilePhotoDataUrl}
+                    alt="Prévia da foto de perfil"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-[var(--text-muted)]">
+                    Sem foto
+                  </div>
+                )}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <Input
+                  id="ajuste-foto"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleProfilePhotoFile(e.target.files?.[0] ?? null)}
+                  className="py-2.5 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-cyan/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-cyan"
+                />
+                {profile.profilePhotoDataUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-fit"
+                    onClick={() => setProfile((p) => ({ ...p, profilePhotoDataUrl: "" }))}
+                  >
+                    Remover foto
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="ajuste-cpf" className="mb-1 block text-xs font-medium text-[var(--text-primary)]">
+              CPF
+            </label>
+            <Input
+              id="ajuste-cpf"
+              value={profile.cpf}
+              onChange={(e) => handleCpfChange(e.target.value)}
+              autoComplete="off"
+              inputMode="numeric"
+              placeholder="000.000.000-00"
+              className="py-2.5"
+            />
+          </div>
+          <div>
+            <label htmlFor="ajuste-birth-date" className="mb-1 block text-xs font-medium text-[var(--text-primary)]">
+              Data de nascimento
+            </label>
+            <DateField
+              id="ajuste-birth-date"
+              value={profile.birthDate}
+              onChange={(e) => setProfile((p) => ({ ...p, birthDate: e.target.value }))}
+              className="py-2.5"
+            />
+          </div>
+          <div>
+            <label htmlFor="ajuste-billing-address" className="mb-1 block text-xs font-medium text-[var(--text-primary)]">
+              Endereço de faturamento
+            </label>
+            <textarea
+              id="ajuste-billing-address"
+              rows={3}
+              value={profile.billingAddress}
+              onChange={(e) => setProfile((p) => ({ ...p, billingAddress: e.target.value }))}
+              placeholder="Rua, número, complemento, bairro, cidade, UF e CEP"
+              className={cn(
+                "w-full resize-none rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-3",
+                "text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]",
+                "transition-[box-shadow,border-color] duration-[380ms] ease-liquid",
+                "focus:border-brand-cyan focus:shadow-[0_0_0_3px_rgba(0,188,212,0.25)] focus:outline-none"
+              )}
             />
           </div>
           <div>
