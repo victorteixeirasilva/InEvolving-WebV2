@@ -60,12 +60,11 @@ export function applyCategoryShareDemoMocks(): ApplyCategoryShareDemoResult {
 
   const profile = loadAjustesProfile();
   if (!profile.email.trim()) {
-    const next: AjustesProfile = {
+    saveAjustesProfile({
+      ...profile,
       name: DEMO_OWNER_NAME,
       email: DEMO_OWNER_EMAIL,
-      phone: profile.phone.trim(),
-    };
-    saveAjustesProfile(next);
+    });
   }
 
   const existing = loadAmigos();
@@ -150,9 +149,9 @@ export function setDemoProfileAsOwner(): void {
   if (typeof window === "undefined") return;
   const p = loadAjustesProfile();
   saveAjustesProfile({
+    ...p,
     name: DEMO_OWNER_NAME,
     email: DEMO_OWNER_EMAIL,
-    phone: p.phone.trim(),
   });
 }
 
@@ -161,8 +160,8 @@ export function setDemoProfileAsInvitee(): void {
   if (typeof window === "undefined") return;
   const p = loadAjustesProfile();
   saveAjustesProfile({
+    ...p,
     name: "Ricardo (demo — convidado)",
     email: DEMO_INVITEE_EMAIL,
-    phone: p.phone.trim(),
   });
 }

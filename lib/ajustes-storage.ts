@@ -5,9 +5,16 @@ export type AjustesProfile = {
   email: string;
   phone: string;
   cpf: string;
+  /** URL `https?://…` vinda da API (foto no servidor). */
+  profilePictureUrl: string;
+  /** Prévia local (data URL) até existir upload que devolva URL. */
   profilePhotoDataUrl: string;
   birthDate: string;
   billingAddress: string;
+  /** Metadados vindos do GET `/auth/api/user/profile` (somente leitura na UI). */
+  emailVerified?: boolean;
+  lastLogin?: string;
+  isActive?: boolean;
 };
 
 export type Amigo = {
@@ -20,6 +27,7 @@ const defaultProfile: AjustesProfile = {
   email: "",
   phone: "",
   cpf: "",
+  profilePictureUrl: "",
   profilePhotoDataUrl: "",
   birthDate: "",
   billingAddress: "",
@@ -33,14 +41,20 @@ export function loadAjustesProfile(): AjustesProfile {
     const p = JSON.parse(raw) as unknown;
     if (!p || typeof p !== "object") return { ...defaultProfile };
     const o = p as Record<string, unknown>;
+    const emailVerified = o.emailVerified;
+    const isActive = o.isActive;
     return {
       name: String(o.name ?? "").trim(),
       email: String(o.email ?? "").trim(),
       phone: String(o.phone ?? "").trim(),
       cpf: String(o.cpf ?? "").trim(),
+      profilePictureUrl: String(o.profilePictureUrl ?? "").trim(),
       profilePhotoDataUrl: String(o.profilePhotoDataUrl ?? "").trim(),
       birthDate: String(o.birthDate ?? "").trim(),
       billingAddress: String(o.billingAddress ?? "").trim(),
+      ...(typeof emailVerified === "boolean" ? { emailVerified } : {}),
+      ...(typeof o.lastLogin === "string" && o.lastLogin.trim() ? { lastLogin: o.lastLogin.trim() } : {}),
+      ...(typeof isActive === "boolean" ? { isActive } : {}),
     };
   } catch {
     return { ...defaultProfile };

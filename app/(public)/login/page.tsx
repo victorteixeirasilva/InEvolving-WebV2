@@ -10,6 +10,10 @@ import { Input } from "@/components/ui/Input";
 import { AnimatedLink } from "@/components/ui/AnimatedLink";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { STORAGE_KEYS } from "@/lib/constants";
+import { loadAjustesProfile, saveAjustesProfile, saveRenewalDate } from "@/lib/ajustes-storage";
+import { notifyUserProfileIncompleteIfNeeded } from "@/lib/ajustes-user-profile-notify";
+import { fetchUserProfile } from "@/lib/user/fetch-user-profile";
+import { userProfileApiToAjustesProfile } from "@/lib/user/map-user-profile-api";
 import authStyles from "@/styles/auth-card.module.css";
 import { LoginFeedbackModal } from "@/components/features/auth/LoginFeedbackModal";
 import { ForgotPasswordModal } from "@/components/features/auth/ForgotPasswordModal";
@@ -55,6 +59,34 @@ export default function LoginPage() {
       } catch {
         /* ignore */
       }
+
+      const emailTrim = data.email.trim();
+      const localBefore = loadAjustesProfile();
+      let profileForNotify = localBefore;
+
+      const rProfile = await fetchUserProfile(result.token);
+      if (rProfile.kind === "ok") {
+        profileForNotify = userProfileApiToAjustesProfile(rProfile.data, localBefore);
+        if (!profileForNotify.email.trim() && emailTrim) {
+          profileForNotify = { ...profileForNotify, email: emailTrim };
+        }
+        saveAjustesProfile(profileForNotify);
+        const re = rProfile.data.dataDaProximaRenovacao?.trim() ?? "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(re)) {
+          saveRenewalDate(re);
+        }
+      } else {
+        profileForNotify = { ...localBefore };
+        if (!profileForNotify.email.trim() && emailTrim) {
+          profileForNotify = { ...profileForNotify, email: emailTrim };
+          saveAjustesProfile(profileForNotify);
+        }
+      }
+
+      queueMicrotask(() => {
+        notifyUserProfileIncompleteIfNeeded(profileForNotify);
+      });
+
       router.push("/dashboard");
     } finally {
       setSubmitting(false);
