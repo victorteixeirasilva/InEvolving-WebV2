@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PlayIcon, PauseIcon, ArrowPathIcon, BellIcon, BellSlashIcon } from "@heroicons/react/24/outline";
+import { PlayIcon, PauseIcon, ArrowPathIcon, BellIcon, BellSlashIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { GlassSelect } from "@/components/ui/GlassSelect";
@@ -109,6 +109,15 @@ export function PomodoroTimer() {
     sendNotification(title, body);
     appToast.success(title);
   }, [mode, focusTime, restTime, sendNotification]);
+
+  const switchModeManually = React.useCallback(() => {
+    const nextMode = mode === "focus" ? "rest" : "focus";
+    const nextTime = (nextMode === "focus" ? focusTime : restTime) * 60;
+    setMode(nextMode);
+    setTimeLeft(nextTime);
+    setIsActive(false);
+    endTimeRef.current = null;
+  }, [mode, focusTime, restTime]);
 
   React.useEffect(() => {
     if (isActive && timeLeft > 0) {
@@ -240,7 +249,7 @@ export function PomodoroTimer() {
         </div>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-wrap items-center justify-center gap-4">
         <Button
           onClick={toggleTimer}
           className="h-16 w-16 rounded-full p-0"
@@ -256,8 +265,22 @@ export function PomodoroTimer() {
           onClick={resetTimer}
           variant="outline"
           className="h-16 w-16 rounded-full p-0"
+          title="Reiniciar o tempo do modo atual"
         >
           <ArrowPathIcon className="h-8 w-8" />
+        </Button>
+        <Button
+          type="button"
+          onClick={switchModeManually}
+          variant="outline"
+          className="h-16 w-16 rounded-full p-0"
+          title={
+            mode === "focus"
+              ? "Trocar para descanso (pausa o timer e usa o tempo de descanso)"
+              : "Trocar para foco (pausa o timer e usa o tempo de foco)"
+          }
+        >
+          <ArrowsRightLeftIcon className="h-8 w-8" />
         </Button>
       </div>
 

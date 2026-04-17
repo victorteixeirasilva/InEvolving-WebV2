@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PlayIcon, PauseIcon, ArrowPathIcon, BellIcon, BellSlashIcon, ChevronDownIcon, ChevronUpIcon, SpeakerXMarkIcon } from "@heroicons/react/24/outline";
+import { PlayIcon, PauseIcon, ArrowPathIcon, BellIcon, BellSlashIcon, ChevronDownIcon, ChevronUpIcon, SpeakerXMarkIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ export function PomodoroSidebar() {
     setIsAlarmPlaying,
     setIsExpanded,
     reset,
+    switchModeManually,
   } = usePomodoroStore();
 
   const requestNotifications = React.useCallback(async () => {
@@ -132,17 +133,27 @@ export function PomodoroSidebar() {
                 {formatTime(timeLeft)}
               </div>
 
-              <div className="flex justify-center gap-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 <Button onClick={toggleTimer} variant="primary" className="h-10 px-4 py-0 text-xs">
                   {isActive ? "Pausar" : "Iniciar"}
                 </Button>
-                <Button onClick={reset} variant="outline" className="h-10 w-10 p-0">
+                <Button onClick={reset} variant="outline" className="h-10 w-10 p-0" title="Reiniciar o tempo do modo atual">
                   <ArrowPathIcon className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  onClick={switchModeManually}
+                  variant="outline"
+                  className="h-10 w-10 p-0"
+                  title={mode === "focus" ? "Trocar para descanso" : "Trocar para foco"}
+                >
+                  <ArrowsRightLeftIcon className="h-4 w-4" />
                 </Button>
                 <Button 
                   onClick={requestNotifications} 
                   variant="outline" 
                   className={cn("h-10 w-10 p-0", notificationsEnabled && "text-brand-cyan border-brand-cyan/30")}
+                  title="Notificações do navegador"
                 >
                   {notificationsEnabled ? <BellIcon className="h-4 w-4" /> : <BellSlashIcon className="h-4 w-4" />}
                 </Button>

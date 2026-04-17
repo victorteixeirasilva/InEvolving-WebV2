@@ -23,7 +23,10 @@ interface PomodoroState {
   setNotificationsEnabled: (enabled: boolean) => void;
   setIsAlarmPlaying: (isPlaying: boolean) => void;
   setIsExpanded: (isExpanded: boolean) => void;
-  
+
+  /** Pausa o timer e troca para o outro modo com a duração completa (sem alarme nem notificação). */
+  switchModeManually: () => void;
+
   reset: () => void;
   tick: () => void;
 }
@@ -63,6 +66,18 @@ export const usePomodoroStore = create<PomodoroState>()(
       setNotificationsEnabled: (notificationsEnabled) => set({ notificationsEnabled }),
       setIsAlarmPlaying: (isAlarmPlaying) => set({ isAlarmPlaying }),
       setIsExpanded: (isExpanded) => set({ isExpanded }),
+
+      switchModeManually: () => {
+        const { mode, focusTime, restTime } = get();
+        const nextMode: TimerMode = mode === "focus" ? "rest" : "focus";
+        set({
+          mode: nextMode,
+          timeLeft: (nextMode === "focus" ? focusTime : restTime) * 60,
+          isActive: false,
+          endTime: null,
+          isAlarmPlaying: false,
+        });
+      },
 
       reset: () => {
         const { mode, focusTime, restTime } = get();
