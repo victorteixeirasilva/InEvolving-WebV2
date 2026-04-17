@@ -3,6 +3,13 @@
  * Client-only — chamar só após montagem ou gesto do usuário.
  */
 
+/** iPhone / iPod / iPad (inclui iPadOS que se identifica como Mac + touch). PWA Safari costuma não suportar fullscreen em elemento. */
+export function isIOSOrIPadOS(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  if (/iPad|iPhone|iPod/i.test(navigator.userAgent)) return true;
+  return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+}
+
 export function getFullscreenElement(): Element | null {
   const doc = document as Document & {
     webkitFullscreenElement?: Element | null;

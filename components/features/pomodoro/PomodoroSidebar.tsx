@@ -21,12 +21,7 @@ import { cn } from "@/lib/utils";
 import { appToast } from "@/lib/app-toast";
 import { usePomodoroStore } from "@/stores/pomodoro-store";
 import { unlockPomodoroAudio } from "@/lib/pomodoro-audio";
-import {
-  addFullscreenChangeListener,
-  exitDocumentFullscreen,
-  isElementFullscreen,
-  requestElementFullscreen,
-} from "@/lib/dom-fullscreen";
+import { useFullscreenWithMobileFallback } from "@/hooks/use-fullscreen-with-mobile-fallback";
 import { usePomodoroFocusWakeLock } from "@/hooks/use-pomodoro-focus-wake-lock";
 
 export function PomodoroSidebar() {
@@ -51,29 +46,10 @@ export function PomodoroSidebar() {
   } = usePomodoroStore();
 
   const fsRef = React.useRef<HTMLDivElement>(null);
-  const [isFs, setIsFs] = React.useState(false);
+  const { isImmersiveFs, isVisualFs, toggleFullscreen: toggleSidebarFullscreen } =
+    useFullscreenWithMobileFallback(fsRef);
 
   usePomodoroFocusWakeLock(isActive, mode);
-
-  React.useEffect(() => {
-    return addFullscreenChangeListener(() => {
-      setIsFs(isElementFullscreen(fsRef.current));
-    });
-  }, []);
-
-  const toggleSidebarFullscreen = React.useCallback(async () => {
-    const el = fsRef.current;
-    if (!el) return;
-    try {
-      if (isElementFullscreen(el)) {
-        await exitDocumentFullscreen();
-      } else {
-        await requestElementFullscreen(el);
-      }
-    } catch {
-      appToast.error("Tela cheia indisponível neste navegador ou dispositivo.");
-    }
-  }, []);
 
   const requestNotifications = React.useCallback(async () => {
     if (!("Notification" in window)) {
@@ -115,10 +91,12 @@ export function PomodoroSidebar() {
         className={cn(
           "overflow-hidden rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)]/50 backdrop-blur-glass transition-all duration-380 ease-liquid",
           "[&:fullscreen]:fixed [&:fullscreen]:inset-0 [&:fullscreen]:z-[200] [&:fullscreen]:min-h-dvh [&:fullscreen]:w-screen [&:fullscreen]:max-w-none [&:fullscreen]:overflow-y-auto [&:fullscreen]:rounded-none [&:fullscreen]:border-0 [&:fullscreen]:bg-[var(--page-bg)]",
-          isFs ? "flex flex-col justify-center p-6" : isExpanded ? "p-4" : "p-3"
+          isImmersiveFs &&
+            "fixed inset-0 z-[200] min-h-dvh w-screen max-w-none overflow-y-auto rounded-none border-0 bg-[var(--page-bg)] pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]",
+          isVisualFs ? "flex flex-col justify-center p-6" : isExpanded ? "p-4" : "p-3"
         )}
       >
-        {isFs ? (
+        {isVisualFs ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-8 py-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-[var(--text-muted)]">
               InEvolving
@@ -156,7 +134,7 @@ export function PomodoroSidebar() {
                 className="h-10 gap-2 px-4 text-sm"
               >
                 <ArrowsPointingInIcon className="h-4 w-4" />
-                Sair da tela cheia
+                Sair do modo expandido
               </Button>
             </div>
           </div>
@@ -206,7 +184,7 @@ export function PomodoroSidebar() {
                     void toggleSidebarFullscreen();
                   }}
                   className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] transition-all hover:bg-[var(--glass-border)]/30 hover:text-[var(--text-primary)]"
-                  title="Tela cheia"
+                  title="Modo expandido (tela cheia no desktop; destaque no iPhone)"
                 >
                   <ArrowsPointingOutIcon className="h-4 w-4" />
                 </button>
@@ -257,7 +235,7 @@ export function PomodoroSidebar() {
                       onClick={() => void toggleSidebarFullscreen()}
                       variant="outline"
                       className="h-10 w-10 p-0"
-                      title="Tela cheia"
+                      title="Modo expandido"
                     >
                       <ArrowsPointingOutIcon className="h-4 w-4" />
                     </Button>
