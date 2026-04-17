@@ -3,6 +3,7 @@
 import * as React from "react";
 import { usePomodoroStore } from "@/stores/pomodoro-store";
 import { appToast } from "@/lib/app-toast";
+import { getPomodoroAudioContext } from "@/lib/pomodoro-audio";
 
 export function PomodoroManager() {
   const {
@@ -21,7 +22,6 @@ export function PomodoroManager() {
     setIsAlarmPlaying,
   } = usePomodoroStore();
 
-  const audioContextRef = React.useRef<AudioContext | null>(null);
   const alarmIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Global Tick Handler
@@ -35,13 +35,12 @@ export function PomodoroManager() {
     return () => clearInterval(interval);
   }, [isActive, tick]);
 
-  const playChime = React.useCallback(() => {
+  const playChime = React.useCallback(async () => {
     try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = getPomodoroAudioContext();
+      if (ctx.state === "suspended") {
+        await ctx.resume();
       }
-      const ctx = audioContextRef.current;
-      if (ctx.state === "suspended") ctx.resume();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
@@ -54,7 +53,9 @@ export function PomodoroManager() {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 1);
-    } catch (e) {}
+    } catch {
+      // ignore
+    }
   }, []);
 
   const sendNotification = React.useCallback(async (title: string, body: string) => {
@@ -80,12 +81,10 @@ export function PomodoroManager() {
   // Handle Alarm Loop
   React.useEffect(() => {
     if (isAlarmPlaying) {
-      // Play immediately
-      playChime();
-      // Then set interval for repetition
+      void playChime();
       alarmIntervalRef.current = setInterval(() => {
-        playChime();
-      }, 3000); // Repeat every 3 seconds
+        void playChime();
+      }, 3000);
     } else {
       if (alarmIntervalRef.current) {
         clearInterval(alarmIntervalRef.current);

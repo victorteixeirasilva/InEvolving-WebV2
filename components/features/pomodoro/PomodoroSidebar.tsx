@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { appToast } from "@/lib/app-toast";
 import { usePomodoroStore } from "@/stores/pomodoro-store";
+import { unlockPomodoroAudio } from "@/lib/pomodoro-audio";
 
 export function PomodoroSidebar() {
   const {
@@ -44,17 +45,9 @@ export function PomodoroSidebar() {
     }
   }, [setNotificationsEnabled]);
 
-  const toggleTimer = React.useCallback(() => {
-    // Prime the audio context on user gesture to avoid autoplay blocking
-    if (typeof window !== "undefined") {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioContext) {
-        const ctx = new AudioContext();
-        if (ctx.state === "suspended") ctx.resume();
-      }
-    }
-
+  const toggleTimer = React.useCallback(async () => {
     if (!isActive) {
+      await unlockPomodoroAudio();
       setEndTime(Date.now() + timeLeft * 1000);
     } else {
       setEndTime(null);

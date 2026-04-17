@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { cn } from "@/lib/utils";
 import { appToast } from "@/lib/app-toast";
+import { getPomodoroAudioContext, unlockPomodoroAudio } from "@/lib/pomodoro-audio";
 
 type TimerMode = "focus" | "rest";
 
@@ -21,7 +22,6 @@ export function PomodoroTimer() {
   
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
   const endTimeRef = React.useRef<number | null>(null);
-  const audioContextRef = React.useRef<AudioContext | null>(null);
 
   // Initialize notifications
   React.useEffect(() => {
@@ -62,16 +62,11 @@ export function PomodoroTimer() {
     }
   };
 
-  const playChime = () => {
+  const playChime = async () => {
     try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      const ctx = audioContextRef.current;
-      
-      // Resume context if it was suspended (common in browsers)
+      const ctx = getPomodoroAudioContext();
       if (ctx.state === "suspended") {
-        ctx.resume();
+        await ctx.resume();
       }
 
       const osc = ctx.createOscillator();
@@ -134,7 +129,7 @@ export function PomodoroTimer() {
       ? `Foco iniciado: ${focusTime} minutos.` 
       : `Descanso iniciado: ${restTime} minutos.`;
     
-    playChime();
+    void playChime();
     sendNotification(title, body);
     appToast.success(title);
   }, [mode, focusTime, restTime, sendNotification]);
@@ -163,8 +158,9 @@ export function PomodoroTimer() {
     };
   }, [isActive, timeLeft, switchMode]);
 
-  const toggleTimer = () => {
+  const toggleTimer = async () => {
     if (!isActive) {
+      await unlockPomodoroAudio();
       endTimeRef.current = Date.now() + timeLeft * 1000;
     } else {
       endTimeRef.current = null;
