@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePomodoroFocusWakeLock } from "@/hooks/use-pomodoro-focus-wake-lock";
 import { usePomodoroStore } from "@/stores/pomodoro-store";
 import { appToast } from "@/lib/app-toast";
 import {
@@ -26,6 +27,8 @@ export function PomodoroManager() {
     setIsActive,
     setIsAlarmPlaying,
   } = usePomodoroStore();
+
+  usePomodoroFocusWakeLock(isActive, mode);
 
   const alarmIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
