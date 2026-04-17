@@ -2,12 +2,24 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PlayIcon, PauseIcon, ArrowPathIcon, BellIcon, BellSlashIcon } from "@heroicons/react/24/outline";
+import {
+  PlayIcon,
+  PauseIcon,
+  ArrowPathIcon,
+  BellIcon,
+  BellSlashIcon,
+  ArrowsRightLeftIcon,
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
+} from "@heroicons/react/24/outline";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { cn } from "@/lib/utils";
 import { appToast } from "@/lib/app-toast";
+import { playPomodoroChime, requestPomodoroAudioUnlockOnNextInteraction, unlockPomodoroAudio } from "@/lib/pomodoro-audio";
+import { useFullscreenWithMobileFallback } from "@/hooks/use-fullscreen-with-mobile-fallback";
+import { usePomodoroFocusWakeLock } from "@/hooks/use-pomodoro-focus-wake-lock";
 
 type TimerMode = "focus" | "rest";
 
@@ -21,7 +33,11 @@ export function PomodoroTimer() {
   
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
   const endTimeRef = React.useRef<number | null>(null);
-  const audioContextRef = React.useRef<AudioContext | null>(null);
+  const fsRef = React.useRef<HTMLDivElement>(null);
+  const { isImmersiveFs, isVisualFs, toggleFullscreen: togglePageFullscreen } =
+    useFullscreenWithMobileFallback(fsRef);
+
+  usePomodoroFocusWakeLock(isActive, mode);
 
   // Initialize notifications
   React.useEffect(() => {
@@ -32,9 +48,13 @@ export function PomodoroTimer() {
     }
   }, []);
 
-  // Handle visibility change to sync timer when coming back from background
+  // Sync timer after background; iOS re-suspends Web Audio until next gesture
   React.useEffect(() => {
     const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        requestPomodoroAudioUnlockOnNextInteraction();
+        void unlockPomodoroAudio();
+      }
       if (document.visibilityState === "visible" && isActive && endTimeRef.current) {
         const now = Date.now();
         const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
@@ -59,39 +79,6 @@ export function PomodoroTimer() {
     } else {
       setNotificationsEnabled(false);
       appToast.error("Permissão de notificação negada.");
-    }
-  };
-
-  const playChime = () => {
-    try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      const ctx = audioContextRef.current;
-      
-      // Resume context if it was suspended (common in browsers)
-      if (ctx.state === "suspended") {
-        ctx.resume();
-      }
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5); // A4
-
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 1);
-    } catch (error) {
-      console.error("Erro ao tocar som:", error);
     }
   };
 
@@ -134,10 +121,19 @@ export function PomodoroTimer() {
       ? `Foco iniciado: ${focusTime} minutos.` 
       : `Descanso iniciado: ${restTime} minutos.`;
     
-    playChime();
+    void playPomodoroChime();
     sendNotification(title, body);
     appToast.success(title);
   }, [mode, focusTime, restTime, sendNotification]);
+
+  const switchModeManually = React.useCallback(() => {
+    const nextMode = mode === "focus" ? "rest" : "focus";
+    const nextTime = (nextMode === "focus" ? focusTime : restTime) * 60;
+    setMode(nextMode);
+    setTimeLeft(nextTime);
+    setIsActive(false);
+    endTimeRef.current = null;
+  }, [mode, focusTime, restTime]);
 
   React.useEffect(() => {
     if (isActive && timeLeft > 0) {
@@ -163,8 +159,9 @@ export function PomodoroTimer() {
     };
   }, [isActive, timeLeft, switchMode]);
 
-  const toggleTimer = () => {
+  const toggleTimer = async () => {
     if (!isActive) {
+      await unlockPomodoroAudio();
       endTimeRef.current = Date.now() + timeLeft * 1000;
     } else {
       endTimeRef.current = null;
@@ -200,30 +197,72 @@ export function PomodoroTimer() {
   const progress = 1 - timeLeft / ((mode === "focus" ? focusTime : restTime) * 60);
 
   return (
-    <GlassCard className="flex flex-col items-center gap-8 p-8 md:p-12">
-      <div className="flex w-full items-center justify-between">
+    <div
+      ref={fsRef}
+      className={cn(
+        "w-full",
+        "[&:fullscreen]:fixed [&:fullscreen]:inset-0 [&:fullscreen]:z-[200] [&:fullscreen]:box-border [&:fullscreen]:flex [&:fullscreen]:min-h-dvh [&:fullscreen]:w-screen [&:fullscreen]:items-center [&:fullscreen]:justify-center [&:fullscreen]:bg-[var(--page-bg)] [&:fullscreen]:p-4",
+        isImmersiveFs &&
+          "fixed inset-0 z-[200] box-border flex min-h-dvh w-screen items-center justify-center bg-[var(--page-bg)] p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+      )}
+    >
+      <GlassCard
+        hoverLift={!isVisualFs}
+        className={cn(
+          "flex w-full flex-col items-center gap-8 p-8 md:p-12",
+          isVisualFs && "mx-auto max-h-[min(100dvh,100%)] max-w-2xl overflow-y-auto shadow-none"
+        )}
+      >
+      <div className="flex w-full items-center justify-between gap-2">
         <h2 className="text-xl font-bold text-[var(--text-primary)]">
           Pomodoro
         </h2>
-        <button
-          onClick={requestNotifications}
-          className={cn(
-            "rounded-full p-2 transition-colors",
-            notificationsEnabled ? "text-brand-cyan" : "text-[var(--text-muted)]"
-          )}
-          title={notificationsEnabled ? "Notificações Ativadas" : "Ativar Notificações"}
-        >
-          {notificationsEnabled ? (
-            <BellIcon className="h-6 w-6" />
-          ) : (
-            <BellSlashIcon className="h-6 w-6" />
-          )}
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void togglePageFullscreen()}
+            className={cn(
+              "rounded-full p-2 transition-colors",
+              isVisualFs ? "text-brand-cyan" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            )}
+            title={
+              isVisualFs
+                ? "Sair do modo expandido"
+                : "Modo expandido — tela cheia no desktop; no iPhone, painel em destaque"
+            }
+          >
+            {isVisualFs ? <ArrowsPointingInIcon className="h-6 w-6" /> : <ArrowsPointingOutIcon className="h-6 w-6" />}
+          </button>
+          <button
+            type="button"
+            onClick={requestNotifications}
+            className={cn(
+              "rounded-full p-2 transition-colors",
+              notificationsEnabled ? "text-brand-cyan" : "text-[var(--text-muted)]"
+            )}
+            title={notificationsEnabled ? "Notificações Ativadas" : "Ativar Notificações"}
+          >
+            {notificationsEnabled ? (
+              <BellIcon className="h-6 w-6" />
+            ) : (
+              <BellSlashIcon className="h-6 w-6" />
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="relative flex h-64 w-64 items-center justify-center">
+      <div
+        className={cn(
+          "relative flex items-center justify-center",
+          isVisualFs ? "h-[min(72vw,22rem)] w-[min(72vw,22rem)] sm:h-96 sm:w-96" : "h-64 w-64"
+        )}
+      >
         {/* Progress Circle */}
-        <svg className="absolute h-full w-full -rotate-90 transform">
+        <svg
+          viewBox="0 0 256 256"
+          className="absolute h-full w-full -rotate-90 transform"
+          preserveAspectRatio="xMidYMid meet"
+        >
           <circle
             cx="128"
             cy="128"
@@ -262,13 +301,18 @@ export function PomodoroTimer() {
           >
             {mode === "focus" ? "Foco" : "Descanso"}
           </motion.div>
-          <div className="text-5xl font-bold tabular-nums text-[var(--text-primary)]">
+          <div
+            className={cn(
+              "font-bold tabular-nums text-[var(--text-primary)]",
+              isVisualFs ? "text-6xl sm:text-7xl" : "text-5xl"
+            )}
+          >
             {formatTime(timeLeft)}
           </div>
         </div>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-wrap items-center justify-center gap-4">
         <Button
           onClick={toggleTimer}
           className="h-16 w-16 rounded-full p-0"
@@ -284,8 +328,22 @@ export function PomodoroTimer() {
           onClick={resetTimer}
           variant="outline"
           className="h-16 w-16 rounded-full p-0"
+          title="Reiniciar o tempo do modo atual"
         >
           <ArrowPathIcon className="h-8 w-8" />
+        </Button>
+        <Button
+          type="button"
+          onClick={switchModeManually}
+          variant="outline"
+          className="h-16 w-16 rounded-full p-0"
+          title={
+            mode === "focus"
+              ? "Trocar para descanso (pausa o timer e usa o tempo de descanso)"
+              : "Trocar para foco (pausa o timer e usa o tempo de foco)"
+          }
+        >
+          <ArrowsRightLeftIcon className="h-8 w-8" />
         </Button>
       </div>
 
@@ -315,6 +373,7 @@ export function PomodoroTimer() {
           </GlassSelect>
         </div>
       </div>
-    </GlassCard>
+      </GlassCard>
+    </div>
   );
 }

@@ -1,8 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { usePomodoroFocusWakeLock } from "@/hooks/use-pomodoro-focus-wake-lock";
 import { usePomodoroStore } from "@/stores/pomodoro-store";
 import { appToast } from "@/lib/app-toast";
+import {
+  playPomodoroChime,
+  POMODORO_ALARM_INTERVAL_MS,
+  requestPomodoroAudioUnlockOnNextInteraction,
+  unlockPomodoroAudio,
+} from "@/lib/pomodoro-audio";
 
 export function PomodoroManager() {
   const {
@@ -21,7 +28,8 @@ export function PomodoroManager() {
     setIsAlarmPlaying,
   } = usePomodoroStore();
 
-  const audioContextRef = React.useRef<AudioContext | null>(null);
+  usePomodoroFocusWakeLock(isActive, mode);
+
   const alarmIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Global Tick Handler
@@ -34,28 +42,6 @@ export function PomodoroManager() {
     }
     return () => clearInterval(interval);
   }, [isActive, tick]);
-
-  const playChime = React.useCallback(() => {
-    try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      const ctx = audioContextRef.current;
-      if (ctx.state === "suspended") ctx.resume();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 1);
-    } catch (e) {}
-  }, []);
 
   const sendNotification = React.useCallback(async (title: string, body: string) => {
     if (notificationsEnabled && Notification.permission === "granted") {
@@ -80,12 +66,10 @@ export function PomodoroManager() {
   // Handle Alarm Loop
   React.useEffect(() => {
     if (isAlarmPlaying) {
-      // Play immediately
-      playChime();
-      // Then set interval for repetition
+      void playPomodoroChime();
       alarmIntervalRef.current = setInterval(() => {
-        playChime();
-      }, 3000); // Repeat every 3 seconds
+        void playPomodoroChime();
+      }, POMODORO_ALARM_INTERVAL_MS);
     } else {
       if (alarmIntervalRef.current) {
         clearInterval(alarmIntervalRef.current);
@@ -96,11 +80,15 @@ export function PomodoroManager() {
     return () => {
       if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
     };
-  }, [isAlarmPlaying, playChime]);
+  }, [isAlarmPlaying]);
 
-  // Handle visibility change to sync timer
+  // Sync timer after background; iOS re-suspends AudioContext — re-unlock on next tap
   React.useEffect(() => {
     const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        requestPomodoroAudioUnlockOnNextInteraction();
+        void unlockPomodoroAudio();
+      }
       const { isActive, endTime, setTimeLeft } = usePomodoroStore.getState();
       if (document.visibilityState === "visible" && isActive && endTime) {
         const now = Date.now();
