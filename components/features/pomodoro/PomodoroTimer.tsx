@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { cn } from "@/lib/utils";
 import { appToast } from "@/lib/app-toast";
-import { getPomodoroAudioContext, unlockPomodoroAudio } from "@/lib/pomodoro-audio";
+import { playPomodoroChime, requestPomodoroAudioUnlockOnNextInteraction, unlockPomodoroAudio } from "@/lib/pomodoro-audio";
 
 type TimerMode = "focus" | "rest";
 
@@ -32,9 +32,13 @@ export function PomodoroTimer() {
     }
   }, []);
 
-  // Handle visibility change to sync timer when coming back from background
+  // Sync timer after background; iOS re-suspends Web Audio until next gesture
   React.useEffect(() => {
     const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        requestPomodoroAudioUnlockOnNextInteraction();
+        void unlockPomodoroAudio();
+      }
       if (document.visibilityState === "visible" && isActive && endTimeRef.current) {
         const now = Date.now();
         const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
@@ -59,34 +63,6 @@ export function PomodoroTimer() {
     } else {
       setNotificationsEnabled(false);
       appToast.error("Permissão de notificação negada.");
-    }
-  };
-
-  const playChime = async () => {
-    try {
-      const ctx = getPomodoroAudioContext();
-      if (ctx.state === "suspended") {
-        await ctx.resume();
-      }
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5); // A4
-
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 1);
-    } catch (error) {
-      console.error("Erro ao tocar som:", error);
     }
   };
 
@@ -129,7 +105,7 @@ export function PomodoroTimer() {
       ? `Foco iniciado: ${focusTime} minutos.` 
       : `Descanso iniciado: ${restTime} minutos.`;
     
-    void playChime();
+    void playPomodoroChime();
     sendNotification(title, body);
     appToast.success(title);
   }, [mode, focusTime, restTime, sendNotification]);
