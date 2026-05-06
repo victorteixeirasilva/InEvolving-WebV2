@@ -10,13 +10,13 @@ import { z } from "zod";
 import { CalendarDaysIcon, PlusCircleIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
-import { DevSectionNotice } from "@/components/ui/DevSectionNotice";
 import { Input } from "@/components/ui/Input";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { DateField } from "@/components/ui/DateField";
 import { RecurringTaskSwitch } from "@/components/ui/RecurringTaskSwitch";
 import { EditarSubtarefaModal } from "@/components/features/tarefas/EditarSubtarefaModal";
 import { SubtarefasKanbanBoard } from "@/components/features/tarefas/SubtarefasKanbanBoard";
+import { CancelarTarefaModal } from "@/components/features/tarefas/CancelarTarefaModal";
 import {
   getTopCancellationReasons,
   parseCancellationSegments,
@@ -38,6 +38,9 @@ import { putTaskDate } from "@/lib/tasks/put-task-date";
 import { toDateInputValue } from "@/lib/tasks/format-task-date-local";
 import { isTaskDisplayRecurring } from "@/lib/tasks/task-display-recurring";
 import { isTaskBlockedByObjectiveForEdit } from "@/lib/tasks/task-edit-policy";
+import { fetchSubtasks } from "@/lib/tasks/fetch-subtasks";
+import { postSubtask } from "@/lib/tasks/post-subtask";
+import { deleteSubtask } from "@/lib/tasks/delete-subtask";
 import type { Objective, Tarefa, TarefaStatus, TarefaSubtarefa } from "@/lib/types/models";
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -132,10 +135,14 @@ export function EditarTarefaModal({
   const [objectives, setObjectives] = useState<Objective[]>([]);
   const [topCancelReasons, setTopCancelReasons] = useState<{ reason: string; count: number }[]>([]);
   const [subtasksState, setSubtasksState] = useState<TarefaSubtarefa[]>([]);
+  const [subtasksLoading, setSubtasksLoading] = useState(false);
   const [subModalOpen, setSubModalOpen] = useState(false);
   const [subModalMode, setSubModalMode] = useState<"create" | "edit">("create");
   const [subModalEditing, setSubModalEditing] = useState<TarefaSubtarefa | null>(null);
   const subtasksSnapshotRef = useRef<string>("");
+  const [cancelSubModalOpen, setCancelSubModalOpen] = useState(false);
+  const [cancelSubTarget, setCancelSubTarget] = useState<TarefaSubtarefa | null>(null);
+  const cancelSubPrevStatusRef = useRef<TarefaStatus>("PENDING");
 
   const { register, handleSubmit, control, reset, watch, setValue, formState: { errors, isDirty } } =
     useForm<FormValues>({
@@ -265,10 +272,56 @@ export function EditarTarefaModal({
       recurringDays: task.recurringDays ?? [],
       recurringUntil: toDateInputValue(task.recurringUntil ?? ""),
     });
-    const migrated = migrateSubtasksFromParent(task.subtasks, task);
-    setSubtasksState(migrated);
-    subtasksSnapshotRef.current = JSON.stringify(migrated);
     setApiError(null);
+
+    if (task.sharedTask) {
+      const migrated = migrateSubtasksFromParent(task.subtasks, task);
+      setSubtasksState(migrated);
+      subtasksSnapshotRef.current = JSON.stringify(migrated);
+      return;
+    }
+
+    let cancelled = false;
+    setSubtasksLoading(true);
+
+    void (async () => {
+      let jwt = "";
+      try {
+        jwt = String(localStorage.getItem(STORAGE_KEYS.token) ?? "").trim();
+      } catch { /* ignore */ }
+
+      if (!jwt) {
+        if (!cancelled) {
+          const migrated = migrateSubtasksFromParent(task.subtasks, task);
+          setSubtasksState(migrated);
+          subtasksSnapshotRef.current = JSON.stringify(migrated);
+          setSubtasksLoading(false);
+        }
+        return;
+      }
+
+      const result = await fetchSubtasks(jwt, String(task.id));
+      if (cancelled) return;
+
+      if (result.kind === "unauthorized") {
+        router.push("/login");
+        window.alert("Sessão expirada ou inválida. Faça login novamente.");
+        setSubtasksLoading(false);
+        return;
+      }
+
+      if (result.kind === "ok") {
+        setSubtasksState(result.subtasks);
+        subtasksSnapshotRef.current = JSON.stringify(result.subtasks);
+      } else {
+        const migrated = migrateSubtasksFromParent(task.subtasks, task);
+        setSubtasksState(migrated);
+        subtasksSnapshotRef.current = JSON.stringify(migrated);
+      }
+      setSubtasksLoading(false);
+    })();
+
+    return () => { cancelled = true; };
   }, [open, task, reset]);
 
   const subtasksDirty = JSON.stringify(subtasksState) !== subtasksSnapshotRef.current;
@@ -319,18 +372,165 @@ export function EditarTarefaModal({
     setSubModalOpen(true);
   };
 
-  const handleSubSave = (s: TarefaSubtarefa) => {
-    const oid = hasObjectiveSelected ? watchObjective : s.idObjective;
-    const next = { ...s, idObjective: oid };
-    if (subModalMode === "create") {
-      setSubtasksState((prev) => [...prev, next]);
-    } else {
-      setSubtasksState((prev) => prev.map((x) => (x.id === next.id ? next : x)));
+  const getJwt = () => {
+    try {
+      return String(localStorage.getItem(STORAGE_KEYS.token) ?? "").trim();
+    } catch {
+      return "";
     }
   };
 
-  const handleSubDelete = (id: string) => {
+  const handleSubSave = async (s: TarefaSubtarefa) => {
+    const oid = hasObjectiveSelected ? watchObjective : s.idObjective;
+    const next = { ...s, idObjective: oid };
+
+    if (subModalMode === "create") {
+      setSubtasksState((prev) => [...prev, next]);
+
+      if (!task?.sharedTask) {
+        const jwt = getJwt();
+        if (jwt && task) {
+          const result = await postSubtask(jwt, {
+            nameTask: next.nameTask,
+            descriptionTask: next.descriptionTask,
+            dateTask: next.dateTask,
+            idParentTask: String(task.id),
+          });
+          if (result.kind === "ok") {
+            setSubtasksState((prev) => prev.map((x) => (x.id === next.id ? result.subtask : x)));
+          } else if (result.kind === "unauthorized") {
+            setSubtasksState((prev) => prev.filter((x) => x.id !== next.id));
+            router.push("/login");
+            window.alert("Sessão expirada ou inválida. Faça login novamente.");
+          } else {
+            setSubtasksState((prev) => prev.filter((x) => x.id !== next.id));
+            setApiError("Não foi possível criar a subtarefa. Tente novamente.");
+          }
+        }
+      }
+    } else {
+      setSubtasksState((prev) => prev.map((x) => (x.id === next.id ? next : x)));
+
+      if (!task?.sharedTask) {
+        const jwt = getJwt();
+        if (jwt) {
+          const idObjectivePut =
+            next.idObjective === "" || next.idObjective === 0
+              ? null
+              : typeof next.idObjective === "number"
+                ? next.idObjective
+                : String(next.idObjective).trim() || null;
+
+          const putResult = await putTask(jwt, next.id, {
+            nameTask: next.nameTask,
+            descriptionTask: next.descriptionTask,
+            idObjective: idObjectivePut,
+          });
+          if (putResult.kind === "unauthorized") {
+            router.push("/login");
+            window.alert("Sessão expirada ou inválida. Faça login novamente.");
+            return;
+          }
+          if (putResult.kind === "network_error") {
+            setApiError("Falha de conexão ao salvar a subtarefa.");
+            return;
+          }
+
+          const original = subModalEditing;
+          if (original && toDateInputValue(original.dateTask) !== toDateInputValue(next.dateTask)) {
+            await putTaskDate(jwt, next.id, next.dateTask);
+          }
+          if (original && original.status !== next.status) {
+            if (next.status === "CANCELLED") {
+              cancelSubPrevStatusRef.current = original.status;
+              setCancelSubTarget(next);
+              setCancelSubModalOpen(true);
+            } else {
+              await patchTaskStatus(jwt, next.id, next.status);
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const handleSubDelete = async (id: string) => {
+    const snapshot = subtasksState.slice();
     setSubtasksState((prev) => prev.filter((x) => x.id !== id));
+
+    if (!task?.sharedTask) {
+      const jwt = getJwt();
+      if (jwt) {
+        const result = await deleteSubtask(jwt, id);
+        if (result.kind === "unauthorized") {
+          setSubtasksState(snapshot);
+          router.push("/login");
+          window.alert("Sessão expirada ou inválida. Faça login novamente.");
+        } else if (result.kind !== "ok" && result.kind !== "not_found") {
+          setSubtasksState(snapshot);
+          setApiError("Não foi possível excluir a subtarefa. Tente novamente.");
+        }
+      }
+    }
+  };
+
+  const handleSubtasksChange = (next: TarefaSubtarefa[]) => {
+    const prev = subtasksState;
+    setSubtasksState(next);
+
+    if (task?.sharedTask) return;
+
+    void (async () => {
+      const jwt = getJwt();
+      if (!jwt) return;
+      for (const nextSub of next) {
+        const prevSub = prev.find((s) => s.id === nextSub.id);
+        if (!prevSub || prevSub.status === nextSub.status) continue;
+
+        if (nextSub.status === "CANCELLED") {
+          cancelSubPrevStatusRef.current = prevSub.status;
+          setCancelSubTarget(nextSub);
+          setCancelSubModalOpen(true);
+        } else {
+          await patchTaskStatus(jwt, nextSub.id, nextSub.status);
+        }
+      }
+    })();
+  };
+
+  const handleCancelSubModalOpenChange = (open: boolean) => {
+    if (!open && cancelSubTarget) {
+      setSubtasksState((prev) =>
+        prev.map((s) => (s.id === cancelSubTarget.id ? { ...s, status: cancelSubPrevStatusRef.current } : s))
+      );
+      setCancelSubTarget(null);
+    }
+    setCancelSubModalOpen(open);
+  };
+
+  const handleCancelSubConfirm = async (reason: string) => {
+    if (!cancelSubTarget) return;
+    const target = cancelSubTarget;
+    setCancelSubTarget(null);
+
+    if (task?.sharedTask) return;
+
+    const jwt = getJwt();
+    if (!jwt) return;
+
+    const result = await patchTaskStatus(jwt, target.id, "CANCELLED", reason);
+    if (result.kind === "unauthorized") {
+      setSubtasksState((prev) =>
+        prev.map((s) => (s.id === target.id ? { ...s, status: cancelSubPrevStatusRef.current } : s))
+      );
+      router.push("/login");
+      window.alert("Sessão expirada ou inválida. Faça login novamente.");
+    } else if (result.kind !== "ok" && result.kind !== "ok_no_body") {
+      setSubtasksState((prev) =>
+        prev.map((s) => (s.id === target.id ? { ...s, status: cancelSubPrevStatusRef.current } : s))
+      );
+      setApiError("Não foi possível cancelar a subtarefa. Tente novamente.");
+    }
   };
 
   const onSubmit = async (data: FormValues) => {
@@ -611,6 +811,8 @@ export function EditarTarefaModal({
       setSubModalOpen(false);
       setRecurringDeleteOpen(false);
       setDeleteSubmitting(false);
+      setCancelSubModalOpen(false);
+      setCancelSubTarget(null);
     }
   }, [open]);
 
@@ -739,35 +941,35 @@ export function EditarTarefaModal({
                 </div>
 
                 <div className="rounded-2xl border border-brand-cyan/25 bg-brand-cyan/[0.06] p-4">
-                  <DevSectionNotice
-                    className="mb-3 border-brand-cyan/30 bg-brand-cyan/[0.1]"
-                    message="Subtarefas e o quadro neste modal ainda estão em evolução; o comportamento e a sincronização podem mudar com a integração ao servidor."
-                  />
                   <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-semibold text-[var(--text-primary)]">Subtarefas</p>
                       <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                        Mesmo formato das tarefas simples; objetivo sempre o da tarefa pai (
+                        Objetivo sempre o da tarefa pai (
                         <span className="font-medium text-brand-cyan">{objectiveLabel}</span>
-                        ). Quadro sem filtro por objetivo. Só é possível criar subtarefas aqui, após a tarefa existir.
+                        ). Criadas e excluídas diretamente no servidor.
                       </p>
                     </div>
                     <Button
                       type="button"
                       variant="outline"
                       className="w-full shrink-0 sm:w-auto"
-                      disabled={blockedReadOnly || !hasObjectiveSelected}
+                      disabled={blockedReadOnly || !hasObjectiveSelected || subtasksLoading}
                       onClick={openNewSubtask}
                     >
                       <PlusCircleIcon className="h-5 w-5" aria-hidden />
                       Nova subtarefa
                     </Button>
                   </div>
-                  <SubtarefasKanbanBoard
-                    subtasks={subtasksState}
-                    onSubtasksChange={blockedReadOnly ? () => {} : setSubtasksState}
-                    onEditSubtask={blockedReadOnly ? () => {} : openEditSubtask}
-                  />
+                  {subtasksLoading ? (
+                    <p className="py-4 text-center text-xs text-[var(--text-muted)]">Carregando subtarefas…</p>
+                  ) : (
+                    <SubtarefasKanbanBoard
+                      subtasks={subtasksState}
+                      onSubtasksChange={blockedReadOnly ? () => {} : handleSubtasksChange}
+                      onEditSubtask={blockedReadOnly ? () => {} : openEditSubtask}
+                    />
+                  )}
                 </div>
 
                 <div className="rounded-xl border border-[var(--glass-border)] bg-[color-mix(in_srgb,var(--glass-bg)_70%,transparent)] px-4 py-3">
@@ -973,6 +1175,14 @@ export function EditarTarefaModal({
       objectiveName={objectiveLabel}
       onSave={handleSubSave}
       onDelete={subModalMode === "edit" ? handleSubDelete : undefined}
+    />
+
+    <CancelarTarefaModal
+      open={cancelSubModalOpen}
+      onOpenChange={handleCancelSubModalOpenChange}
+      taskName={cancelSubTarget?.nameTask ?? ""}
+      idObjective={cancelSubTarget?.idObjective ?? task.idObjective}
+      onConfirm={handleCancelSubConfirm}
     />
     </>
   );

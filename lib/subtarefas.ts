@@ -1,11 +1,25 @@
 import { formatDateEnCA, toDateInputValue } from "@/lib/tasks/format-task-date-local";
 import type { Tarefa, TarefaStatus, TarefaSubtarefa } from "@/lib/types/models";
 
-const VALID_STATUS: TarefaStatus[] = ["PENDING", "IN_PROGRESS", "DONE", "OVERDUE", "CANCELLED"];
-
 function parseStatus(raw: unknown): TarefaStatus {
-  const s = String(raw ?? "");
-  return VALID_STATUS.includes(s as TarefaStatus) ? (s as TarefaStatus) : "PENDING";
+  const s = String(raw ?? "").trim().toUpperCase().replace(/\s+/g, "_");
+  switch (s) {
+    case "TODO":
+    case "PENDING":
+      return "PENDING";
+    case "IN_PROGRESS":
+      return "IN_PROGRESS";
+    case "DONE":
+      return "DONE";
+    case "OVERDUE":
+    case "LATE":
+      return "OVERDUE";
+    case "CANCELLED":
+    case "CANCELED":
+      return "CANCELLED";
+    default:
+      return "PENDING";
+  }
 }
 
 export function createSubtaskId(): string {
@@ -98,4 +112,44 @@ export function stripEmptySubtasks(list: TarefaSubtarefa[]): TarefaSubtarefa[] {
 
 export function syncSubtasksObjective(list: TarefaSubtarefa[], idObjective: number | string): TarefaSubtarefa[] {
   return list.map((s) => ({ ...s, idObjective }));
+}
+
+/**
+ * Normaliza um item bruto retornado pela API de subtarefas (`GET/POST /auth/api/tasks/subtask/…`)
+ * para o formato `TarefaSubtarefa` usado na UI.
+ */
+export function normalizeApiSubtask(raw: unknown): TarefaSubtarefa | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+
+  const id = typeof o.id === "string" && o.id.trim() ? o.id.trim() : null;
+  if (!id) return null;
+
+  const nameTask = typeof o.nameTask === "string" ? o.nameTask.trim() : "";
+  if (!nameTask) return null;
+
+  const descriptionTask = typeof o.descriptionTask === "string" ? o.descriptionTask.trim() : "";
+  const status = parseStatus(o.status);
+  const dateTask = toDateInputValue(String(o.dateTask ?? "")) || String(o.dateTask ?? "");
+
+  let idObjective: number | string = "";
+  if (typeof o.idObjective === "string" && o.idObjective.trim()) idObjective = o.idObjective.trim();
+  else if (typeof o.idObjective === "number" && Number.isFinite(o.idObjective)) idObjective = o.idObjective;
+
+  const idParentTask =
+    typeof o.idParentTask === "string" ? o.idParentTask.trim() || null : null;
+
+  const cancellationReason =
+    typeof o.cancellationReason === "string" ? o.cancellationReason : null;
+
+  return {
+    id,
+    nameTask,
+    descriptionTask,
+    dateTask,
+    status,
+    idObjective,
+    idParentTask,
+    cancellationReason,
+  };
 }

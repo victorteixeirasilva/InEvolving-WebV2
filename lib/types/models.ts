@@ -59,6 +59,9 @@ export interface TarefaSubtarefa {
   dateTask: string;
   status: TarefaStatus;
   idObjective: number | string;
+  /** UUID da tarefa pai (vindo da API). Necessário para operações de delete/update via endpoint de subtarefas. */
+  idParentTask?: string | null;
+  cancellationReason?: string | null;
 }
 
 export interface Tarefa {
