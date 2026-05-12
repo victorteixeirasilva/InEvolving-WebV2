@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SparklesIcon, PencilSquareIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
+import { SparklesIcon, PencilSquareIcon, PlusCircleIcon, ShareIcon } from "@heroicons/react/24/outline";
 import { DevSectionNotice } from "@/components/ui/DevSectionNotice";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -13,7 +13,8 @@ import { EditarCategoriaModal } from "@/components/features/dashboard/EditarCate
 import { NovaCategoriaModal } from "@/components/features/dashboard/NovaCategoriaModal";
 import { leaveSharedCategoryAsInvitee, loadAcceptedSharedCategories } from "@/lib/category-share-storage";
 import { loadAjustesProfile } from "@/lib/ajustes-storage";
-import { STORAGE_KEYS } from "@/lib/constants";
+import { STORAGE_KEYS, WHATSAPP_RENEWAL_URL } from "@/lib/constants";
+import { useStarterPlan } from "@/hooks/use-starter-plan";
 import { fetchDashboardCategories } from "@/lib/dashboard/fetch-dashboard-categories";
 import { fetchVisionBoardGenerate } from "@/lib/motivation/fetch-vision-board-generate";
 import { hasVisionBoardPreview } from "@/lib/vision-board";
@@ -21,6 +22,7 @@ import type { Category, ResponseDashboard } from "@/lib/types/models";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const isStarterPlan = useStarterPlan();
   const didRedirect401Ref = useRef(false);
 
   const redirectToLoginUnauthorized = useCallback(() => {
@@ -92,6 +94,11 @@ export default function DashboardPage() {
   }, [redirectToLoginUnauthorized]);
 
   useEffect(() => {
+    if (isStarterPlan) {
+      setCarregandoVision(false);
+      return;
+    }
+
     let cancelled = false;
 
     const run = async () => {
@@ -142,13 +149,14 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [redirectToLoginUnauthorized]);
+  }, [isStarterPlan, redirectToLoginUnauthorized]);
 
   const categoryList = useMemo(() => {
     if (!dashboardData) return [];
+    if (isStarterPlan) return dashboardData.categoryDTOList;
     const shared = loadAcceptedSharedCategories().map((x) => x.category);
     return [...dashboardData.categoryDTOList, ...shared];
-  }, [dashboardData]);
+  }, [dashboardData, isStarterPlan]);
 
   const openCategory = (c: Category) => {
     try {
@@ -271,10 +279,35 @@ export default function DashboardPage() {
                 Nova categoria
               </button>
             </div>
-            <DevSectionNotice
-              className="mt-4"
-              message="Compartilhar categoria, convites por link e categorias recebidas de outros usuários ainda estão em evolução; o fluxo pode mudar com a integração ao servidor."
-            />
+            {!isStarterPlan && (
+              <DevSectionNotice
+                className="mt-4"
+                message="Compartilhar categoria, convites por link e categorias recebidas de outros usuários ainda estão em evolução; o fluxo pode mudar com a integração ao servidor."
+              />
+            )}
+            {isStarterPlan && (
+              <div className="mt-4 flex items-start gap-3 rounded-xl border border-brand-blue/20 bg-brand-blue/5 px-4 py-3">
+                <ShareIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-cyan" aria-hidden />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">
+                    Categorias compartilhadas — disponível em planos superiores
+                  </p>
+                  <p className="text-xs leading-relaxed text-[var(--text-muted)]">
+                    Você pode criar suas próprias categorias normalmente. Para colaborar com outras pessoas e receber
+                    categorias compartilhadas por amigos ou equipe, faça um upgrade do seu plano.{" "}
+                    <a
+                      href={WHATSAPP_RENEWAL_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-brand-cyan underline-offset-4 hover:underline"
+                    >
+                      Saiba mais via WhatsApp
+                    </a>
+                    .
+                  </p>
+                </div>
+              </div>
+            )}
           </ParallaxSection>
         </FadeInView>
 
@@ -300,7 +333,40 @@ export default function DashboardPage() {
           </GlassCard>
         )}
 
-        {!carregandoVision && !showVisionPreview && (
+        {!carregandoVision && !showVisionPreview && isStarterPlan && (
+          <GlassCard className="border-brand-purple/25">
+            <div className="flex flex-col items-center gap-4 px-4 py-10 text-center sm:flex-row sm:items-start sm:text-start">
+              <div
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-purple/30 to-brand-pink/20 text-brand-pink shadow-glow"
+                aria-hidden
+              >
+                <SparklesIcon className="h-8 w-8" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-2">
+                <h2 className="text-lg font-bold text-[var(--text-primary)]">
+                  Seu Quadro dos Sonhos personalizado está esperando por você
+                </h2>
+                <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+                  O <strong className="font-semibold text-[var(--text-primary)]">Vision Board</strong> é gerado
+                  automaticamente a partir dos seus sonhos e te mantém focado no que realmente importa. Com ele você
+                  visualiza seus objetivos de vida todos os dias, aumentando as chances de realizá-los. Esse recurso
+                  exclusivo está disponível nos planos superiores — faça o upgrade e transforme seus sonhos em
+                  imagens que inspiram.
+                </p>
+                <a
+                  href={WHATSAPP_RENEWAL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex tap-target items-center justify-center rounded-xl bg-gradient-to-r from-brand-purple to-brand-pink px-5 py-3 text-sm font-semibold text-white shadow-glow transition-all duration-[380ms] hover:shadow-glass-lg"
+                >
+                  Quero meu Vision Board — Fazer upgrade via WhatsApp
+                </a>
+              </div>
+            </div>
+          </GlassCard>
+        )}
+
+        {!carregandoVision && !showVisionPreview && !isStarterPlan && (
           <GlassCard className="border-dashed border-brand-cyan/25">
             <div className="flex flex-col items-center gap-4 px-4 py-10 text-center sm:flex-row sm:items-start sm:text-start">
               <div

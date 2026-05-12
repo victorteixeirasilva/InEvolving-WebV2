@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 import { BOTTOM_NAV } from "@/components/layout/nav-config";
 import { useMenuStore } from "@/stores/menu-store";
 import { usePomodoroStore } from "@/stores/pomodoro-store";
+import { useStarterPlan } from "@/hooks/use-starter-plan";
 
 export function BottomNav() {
   const pathname = usePathname();
   const setDrawerOpen = useMenuStore((s) => s.setDrawerOpen);
   const setIsPomodoroExpanded = usePomodoroStore((s) => s.setIsExpanded);
+  const isStarterPlan = useStarterPlan();
 
   return (
     <nav
@@ -24,7 +26,8 @@ export function BottomNav() {
       aria-label="Navegação principal"
     >
       <ul className="flex min-w-0 items-stretch justify-between gap-0">
-        {BOTTOM_NAV.map(({ href, label, bottomNavLabel, icon: Icon }) => {
+        {BOTTOM_NAV.map(({ href, label, bottomNavLabel, icon: Icon, starterHidden }) => {
+          if (isStarterPlan && starterHidden) return null;
           const active = pathname === href || pathname.startsWith(`${href}/`);
           const text = bottomNavLabel ?? label;
           

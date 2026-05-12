@@ -18,6 +18,7 @@ import authStyles from "@/styles/auth-card.module.css";
 import { LoginFeedbackModal } from "@/components/features/auth/LoginFeedbackModal";
 import { ForgotPasswordModal } from "@/components/features/auth/ForgotPasswordModal";
 import { submitLoginRequest } from "@/lib/auth/submit-login";
+import { fetchStarterPlan } from "@/lib/auth/fetch-starter-plan";
 import type { LoginErrorCode } from "@/lib/auth/login-result";
 
 const schema = z.object({
@@ -58,6 +59,15 @@ export default function LoginPage() {
         }
       } catch {
         /* ignore */
+      }
+
+      const planResult = await fetchStarterPlan(result.token);
+      if (planResult.kind === "ok") {
+        try {
+          localStorage.setItem(STORAGE_KEYS.isStarterPlan, String(planResult.isStarterPlan));
+        } catch {
+          /* ignore */
+        }
       }
 
       const emailTrim = data.email.trim();

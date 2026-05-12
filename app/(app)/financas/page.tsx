@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowPathIcon, PencilSquareIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, BanknotesIcon, PencilSquareIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { FinancasAvailableCostOfLivingCard } from "@/components/features/financas/FinancasAvailableCostOfLivingCard";
 import { FinancasAvailableInvestCard } from "@/components/features/financas/FinancasAvailableInvestCard";
 import { FinancasExtraIncomeCard } from "@/components/features/financas/FinancasExtraIncomeCard";
@@ -10,7 +10,8 @@ import { FinancasTotalBalanceCard } from "@/components/features/financas/Financa
 import { FinancasTransactionsPanel } from "@/components/features/financas/FinancasTransactionsPanel";
 import { FinancasIntroModal } from "@/components/features/financas/FinancasIntroModal";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { STORAGE_KEYS } from "@/lib/constants";
+import { STORAGE_KEYS, WHATSAPP_RENEWAL_URL } from "@/lib/constants";
+import { useStarterPlan } from "@/hooks/use-starter-plan";
 import {
   fetchFinancePeriod,
   firstDayOfMonthYmd,
@@ -42,6 +43,7 @@ const EMPTY_FINANCE_DATA: ResponseFinancas = {
 
 export default function FinancasPage() {
   const router = useRouter();
+  const isStarterPlan = useStarterPlan();
   const authRedirect401Ref = useRef(false);
   const handleUnauthorized = useCallback(() => {
     if (!authRedirect401Ref.current) {
@@ -291,6 +293,42 @@ export default function FinancasPage() {
     const mm = String(month).padStart(2, "0");
     setSelectedMonth(`${year}-${mm}`);
   };
+
+  if (isStarterPlan) {
+    return (
+      <div className="mx-auto max-w-2xl pt-4 md:pt-6">
+        <h1 className="mb-6 text-2xl font-bold">Finanças</h1>
+        <GlassCard>
+          <div className="flex flex-col items-center gap-4 px-4 py-10 text-center sm:flex-row sm:items-start sm:text-start">
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-blue/30 to-brand-cyan/20 text-brand-cyan shadow-glow"
+              aria-hidden
+            >
+              <BanknotesIcon className="h-8 w-8" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">
+                Funcionalidade não disponível no plano Starter
+              </h2>
+              <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+                O módulo de <strong className="font-semibold text-[var(--text-primary)]">Finanças</strong> não está
+                incluído no plano Starter. Faça um upgrade para controlar seu saldo, registrar transações e visualizar
+                sua saúde financeira.
+              </p>
+              <a
+                href={WHATSAPP_RENEWAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex tap-target items-center justify-center rounded-xl bg-gradient-to-r from-brand-blue to-brand-cyan px-5 py-3 text-sm font-semibold text-white shadow-glow transition-all duration-[380ms] hover:shadow-glass-lg dark:from-brand-purple dark:to-brand-pink"
+              >
+                Fazer upgrade via WhatsApp
+              </a>
+            </div>
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
