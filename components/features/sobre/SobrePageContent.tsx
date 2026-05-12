@@ -11,6 +11,7 @@ import { FadeInView, ParallaxSection } from "@/components/layout/ScrollReveal";
 import { StaggerList } from "@/features/animations/StaggerList";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { PRODUCT_SHOTS } from "@/components/features/sobre/product-shots";
+import { EvolutionQuiz } from "@/components/features/sobre/EvolutionQuiz";
 
 const waDemo = buildWhatsAppMessageUrl(
   "Olá! Vim pela página do InEvolving e quero conhecer os planos e começar a usar."
@@ -18,11 +19,17 @@ const waDemo = buildWhatsAppMessageUrl(
 const waPlanos = buildWhatsAppMessageUrl(
   "Olá! Quero informações sobre planos e valores do InEvolving."
 );
-const waPlanoMensal = buildWhatsAppMessageUrl(
-  "Olá! Quero assinar o InEvolving no plano mensal (R$ 79,99/mês)."
+const waStarterMensal = buildWhatsAppMessageUrl(
+  "Olá! Quero assinar o InEvolving Starter no plano mensal (R$ 24,99/mês). Quero aproveitar os 30 dias grátis."
 );
-const waPlanoAnual = buildWhatsAppMessageUrl(
-  "Olá! Quero assinar o InEvolving no plano anual (R$ 59,99/mês cobrado anualmente)."
+const waStarterAnual = buildWhatsAppMessageUrl(
+  "Olá! Quero assinar o InEvolving Starter no plano anual (R$ 155,88/ano = R$ 12,99/mês). Quero aproveitar os 30 dias grátis."
+);
+const waProMensal = buildWhatsAppMessageUrl(
+  "Olá! Quero assinar o InEvolving Pro no plano mensal (promoção R$ 49,99/mês para os primeiros 200 assinantes). Quero aproveitar os 30 dias grátis."
+);
+const waProAnual = buildWhatsAppMessageUrl(
+  "Olá! Quero assinar o InEvolving Pro no plano anual (R$ 299,88/ano = R$ 24,99/mês). Quero aproveitar os 30 dias grátis."
 );
 const waOnboarding = buildWhatsAppMessageUrl(
   "Olá! Quero levar o InEvolving para minha equipe ou empresa."
@@ -372,6 +379,7 @@ export function SobrePageContent() {
               ["#interface", "Telas"],
               ["#produto", "Produto"],
               ["#diferenciais", "Diferenciais"],
+              ["#quiz", "Meu Plano"],
               ["#planos", "Planos"],
               ["#faq", "FAQ"],
             ].map(([href, label]) => (
@@ -454,8 +462,19 @@ export function SobrePageContent() {
               Ver planos no WhatsApp
             </WaLink>
           </motion.div>
+          <motion.div
+            className="mt-5 flex justify-center"
+            initial={reduce ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.28, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand-cyan/40 bg-brand-cyan/10 px-4 py-1.5 text-sm font-semibold text-brand-cyan dark:border-brand-pink/40 dark:bg-brand-pink/10 dark:text-brand-pink">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0" aria-hidden="true"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clipRule="evenodd" /></svg>
+              30 dias grátis · Sem cadastrar cartão de crédito
+            </span>
+          </motion.div>
           <motion.p
-            className="mt-6 text-sm text-[var(--text-muted)]"
+            className="mt-4 text-sm text-[var(--text-muted)]"
             initial={reduce ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35, duration: 0.45 }}
@@ -605,6 +624,26 @@ export function SobrePageContent() {
         </FadeInView>
       </section>
 
+      <section
+        id="quiz"
+        className="scroll-mt-24 border-y border-[var(--glass-border)] bg-black/[0.02] px-4 py-16 dark:bg-white/[0.02] sm:px-6 md:px-8 md:py-20"
+      >
+        <div className="mx-auto max-w-6xl">
+          <FadeInView className="mb-10 text-center">
+            <h2 className="font-mono text-xs font-semibold uppercase tracking-widest text-brand-cyan dark:text-brand-pink">
+              Quiz de evolução
+            </h2>
+            <p className="mx-auto mt-2 max-w-2xl text-2xl font-bold text-[var(--text-primary)] md:text-3xl">
+              Descubra seu plano personalizado em 2 minutos
+            </p>
+            <p className="mx-auto mt-3 max-w-xl text-[var(--text-muted)]">
+              7 perguntas, resultado imediato — veja exatamente o que vai mudar na sua vida em 7, 30 e 60 dias com o InEvolving.
+            </p>
+          </FadeInView>
+          <EvolutionQuiz />
+        </div>
+      </section>
+
       <section id="planos" className="scroll-mt-24 px-4 pb-20 sm:px-6 md:px-8">
         <FadeInView className="mx-auto max-w-6xl">
           <div className="mb-10 text-center">
@@ -612,54 +651,140 @@ export function SobrePageContent() {
               Planos
             </h2>
             <p className="mt-2 text-2xl font-bold text-[var(--text-primary)] md:text-3xl">
-              Preço transparente — perfis Individual, Time e Empresa no WhatsApp
+              Escolha o plano certo para o seu nível de evolução
             </p>
             <p className="mx-auto mt-3 max-w-xl text-[var(--text-muted)]">
-              Plano pessoal com valores públicos abaixo. Para equipes e empresas, fechamos condições e volume com o
-              time comercial.
+              Planos pessoais com valores públicos abaixo. Para equipes e empresas, fechamos condições e volume pelo WhatsApp.
             </p>
+            <div className="mt-4 flex justify-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-brand-cyan/40 bg-brand-cyan/10 px-4 py-1.5 text-sm font-semibold text-brand-cyan dark:border-brand-pink/40 dark:bg-brand-pink/10 dark:text-brand-pink">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0" aria-hidden="true"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clipRule="evenodd" /></svg>
+                30 dias grátis · Sem cadastrar cartão de crédito
+              </span>
+            </div>
           </div>
 
-          <div className="mb-10 grid gap-4 md:grid-cols-2">
+          {/* Starter row */}
+          <div className="mb-4 grid gap-4 md:grid-cols-2">
+            {/* Starter Mensal */}
             <motion.div
               className="rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-6 shadow-glass backdrop-blur-glass"
               whileHover={reduce ? undefined : { y: -3 }}
               transition={{ type: "spring", stiffness: 400, damping: 28 }}
             >
-              <p className="font-mono text-xs font-semibold uppercase tracking-wider text-brand-cyan">Mensal</p>
+              <p className="font-mono text-xs font-semibold uppercase tracking-wider text-brand-cyan">InEvolving Starter · Mensal</p>
               <p className="mt-2 flex items-baseline gap-1 text-[var(--text-primary)]">
                 <span className="text-sm font-medium text-[var(--text-muted)]">R$</span>
-                <span className="text-4xl font-extrabold tracking-tight">79,99</span>
+                <span className="text-4xl font-extrabold tracking-tight">24,99</span>
                 <span className="text-sm text-[var(--text-muted)]">/mês</span>
               </p>
+              <ul className="mt-3 space-y-1 text-sm text-[var(--text-muted)]">
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Tarefas, Kanban e Objetivos</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Categorias e acompanhamento</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Motivação e cadastro de sonhos</li>
+                <li className="flex items-center gap-2"><span className="text-[var(--text-muted)] opacity-50">✗</span> <span className="opacity-60">Vision board automático</span></li>
+                <li className="flex items-center gap-2"><span className="text-[var(--text-muted)] opacity-50">✗</span> <span className="opacity-60">Geração por IA</span></li>
+              </ul>
               <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-                Menos de um café por dia: em média, <strong className="text-[var(--text-primary)]">pouco mais de R$ 2</strong>{" "}
-                por dia no mês para se organizar, acompanhar metas e mudar de vida com método.
+                Comece a se organizar com método — tarefas, objetivos e motivação em um único lugar.
               </p>
-              <WaLink href={waPlanoMensal} className="mt-5 w-full">
-                Assinar mensal no WhatsApp
+              <WaLink href={waStarterMensal} className="mt-5 w-full">
+                Assinar Starter Mensal
               </WaLink>
             </motion.div>
+
+            {/* Starter Anual */}
             <motion.div
-              className="rounded-2xl border-2 border-brand-cyan/45 bg-[var(--glass-bg)] p-6 shadow-glow backdrop-blur-glass dark:border-brand-pink/35"
+              className="rounded-2xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-6 shadow-glass backdrop-blur-glass"
               whileHover={reduce ? undefined : { y: -3 }}
               transition={{ type: "spring", stiffness: 400, damping: 28 }}
             >
-              <p className="font-mono text-xs font-semibold uppercase tracking-wider text-brand-purple dark:text-brand-pink">
-                Anual
-              </p>
+              <p className="font-mono text-xs font-semibold uppercase tracking-wider text-brand-cyan">InEvolving Starter · Anual</p>
               <p className="mt-2 flex items-baseline gap-1 text-[var(--text-primary)]">
                 <span className="text-sm font-medium text-[var(--text-muted)]">R$</span>
-                <span className="text-4xl font-extrabold tracking-tight">59,99</span>
+                <span className="text-4xl font-extrabold tracking-tight">12,99</span>
                 <span className="text-sm text-[var(--text-muted)]">/mês</span>
               </p>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">Cobrança anual (12× R$ 59,99 = R$ 719,88/ano).</p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Cobrança anual · R$ 155,88/ano</p>
+              <ul className="mt-3 space-y-1 text-sm text-[var(--text-muted)]">
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Tarefas, Kanban e Objetivos</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Categorias e acompanhamento</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Motivação e cadastro de sonhos</li>
+                <li className="flex items-center gap-2"><span className="text-[var(--text-muted)] opacity-50">✗</span> <span className="opacity-60">Vision board automático</span></li>
+                <li className="flex items-center gap-2"><span className="text-[var(--text-muted)] opacity-50">✗</span> <span className="opacity-60">Geração por IA</span></li>
+              </ul>
               <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-                Na média do ano, fica <strong className="text-[var(--text-primary)]">menos de R$ 2 por dia</strong> — o
-                melhor custo por resultado para quem quer compromisso de longo prazo.
+                O ponto de partida ideal — clareza e método por menos de R$ 0,50 por dia.
               </p>
-              <WaLink href={waPlanoAnual} className="mt-5 w-full">
-                Assinar anual no WhatsApp
+              <WaLink href={waStarterAnual} className="mt-5 w-full">
+                Assinar Starter Anual
+              </WaLink>
+            </motion.div>
+          </div>
+
+          {/* Pro row */}
+          <div className="mb-10 grid gap-4 md:grid-cols-2">
+            {/* Pro Mensal — promo */}
+            <motion.div
+              className="relative rounded-2xl border-2 border-brand-cyan/50 bg-[var(--glass-bg)] p-6 shadow-glow backdrop-blur-glass dark:border-brand-pink/40"
+              whileHover={reduce ? undefined : { y: -3 }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
+            >
+              <span className="absolute -top-3 left-4 rounded-full bg-gradient-to-r from-brand-blue to-brand-cyan px-3 py-0.5 text-xs font-semibold text-white dark:from-brand-purple dark:to-brand-pink">
+                Promoção · Próximos 200 assinantes
+              </span>
+              <p className="font-mono text-xs font-semibold uppercase tracking-wider text-brand-purple dark:text-brand-pink">InEvolving Pro · Mensal</p>
+              <div className="mt-2 flex items-baseline gap-2 text-[var(--text-primary)]">
+                <span className="text-lg font-medium text-[var(--text-muted)] line-through">R$ 79,99</span>
+                <span className="flex items-baseline gap-1">
+                  <span className="text-sm font-medium text-[var(--text-muted)]">R$</span>
+                  <span className="text-4xl font-extrabold tracking-tight">49,99</span>
+                  <span className="text-sm text-[var(--text-muted)]">/mês</span>
+                </span>
+              </div>
+              <ul className="mt-3 space-y-1 text-sm text-[var(--text-muted)]">
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Todas as funcionalidades do Starter</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Dashboard e Finanças completas</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Vision board automático</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Geração por IA</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Livros &amp; aprendizado</li>
+              </ul>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
+                Invista menos de <strong className="text-[var(--text-primary)]">R$ 2 por dia</strong> em evolução real — organize sua vida, acompanhe metas e use IA para mudar de resultado.
+              </p>
+              <WaLink href={waProMensal} className="mt-5 w-full">
+                Assinar Pro Mensal
+              </WaLink>
+            </motion.div>
+
+            {/* Pro Anual */}
+            <motion.div
+              className="relative rounded-2xl border-2 border-brand-cyan/45 bg-[var(--glass-bg)] p-6 shadow-glow backdrop-blur-glass dark:border-brand-pink/35"
+              whileHover={reduce ? undefined : { y: -3 }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
+            >
+              <span className="absolute -top-3 left-4 rounded-full bg-gradient-to-r from-brand-purple to-brand-cyan px-3 py-0.5 text-xs font-semibold text-white dark:from-brand-purple dark:to-brand-pink">
+                Melhor custo-benefício
+              </span>
+              <p className="font-mono text-xs font-semibold uppercase tracking-wider text-brand-purple dark:text-brand-pink">InEvolving Pro · Anual</p>
+              <p className="mt-2 flex items-baseline gap-1 text-[var(--text-primary)]">
+                <span className="text-sm font-medium text-[var(--text-muted)]">R$</span>
+                <span className="text-4xl font-extrabold tracking-tight">24,99</span>
+                <span className="text-sm text-[var(--text-muted)]">/mês</span>
+              </p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Cobrança anual · R$ 299,88/ano</p>
+              <ul className="mt-3 space-y-1 text-sm text-[var(--text-muted)]">
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Todas as funcionalidades do Starter</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Dashboard e Finanças completas</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Vision board automático</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Geração por IA</li>
+                <li className="flex items-center gap-2"><span className="text-brand-cyan">✓</span> Livros &amp; aprendizado</li>
+              </ul>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
+                Menos de <strong className="text-[var(--text-primary)]">R$ 1 por dia</strong>: o investimento mais inteligente para quem quer compromisso de longo prazo com resultado.
+              </p>
+              <WaLink href={waProAnual} className="mt-5 w-full">
+                Assinar Pro Anual
               </WaLink>
             </motion.div>
           </div>
@@ -668,9 +793,9 @@ export function SobrePageContent() {
             <GlassCard hoverLift className="flex flex-col border border-[var(--glass-border)]">
               <h3 className="text-lg font-semibold text-[var(--text-primary)]">Individual</h3>
               <p className="mt-2 flex-1 text-sm text-[var(--text-muted)]">
-                Profissionais e estudantes: use os planos Mensal ou Anual acima (a partir de R$ 59,99/mês no anual).
+                Profissionais e estudantes: escolha entre Starter ou Pro — a partir de R$ 12,99/mês no Starter Anual.
               </p>
-              <WaLink href={waPlanoAnual} className="mt-6 w-full">
+              <WaLink href={waProAnual} className="mt-6 w-full">
                 Escolher plano no WhatsApp
               </WaLink>
             </GlassCard>
