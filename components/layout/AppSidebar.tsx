@@ -5,9 +5,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/layout/nav-config";
 import { PomodoroSidebar } from "@/components/features/pomodoro/PomodoroSidebar";
+import { useStarterPlan } from "@/hooks/use-starter-plan";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const isStarterPlan = useStarterPlan();
 
   return (
     <aside
@@ -26,8 +28,9 @@ export function AppSidebar() {
       </Link>
       <PomodoroSidebar />
       <nav className="mt-4 flex flex-1 flex-col gap-1 overflow-y-auto px-3">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon, starterHidden }) => {
           if (href === "#pomodoro") return null;
+          if (isStarterPlan && starterHidden) return null;
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link

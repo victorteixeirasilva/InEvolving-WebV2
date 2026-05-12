@@ -8,11 +8,13 @@ import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/layout/nav-config";
 import { useMenuStore } from "@/stores/menu-store";
 import { PomodoroSidebar } from "@/components/features/pomodoro/PomodoroSidebar";
+import { useStarterPlan } from "@/hooks/use-starter-plan";
 
 export function MobileDrawer() {
   const open = useMenuStore((s) => s.drawerOpen);
   const setOpen = useMenuStore((s) => s.setDrawerOpen);
   const pathname = usePathname();
+  const isStarterPlan = useStarterPlan();
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -40,8 +42,9 @@ export function MobileDrawer() {
           <PomodoroSidebar />
           <nav className="flex-1 overflow-y-auto p-3" aria-label="Navegação">
             <ul className="flex flex-col gap-1">
-              {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+              {NAV_ITEMS.map(({ href, label, icon: Icon, starterHidden }) => {
                 if (href === "#pomodoro") return null;
+                if (isStarterPlan && starterHidden) return null;
                 const active = pathname === href || pathname.startsWith(`${href}/`);
                 return (
                   <li key={href}>

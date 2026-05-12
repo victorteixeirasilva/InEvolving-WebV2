@@ -81,6 +81,8 @@ export const STORAGE_KEYS = {
   categoryShareAccepted: "inevolving_category_share_accepted",
   /** Tarefas colaborativas em categorias compartilhadas (mock local). */
   sharedCategoryTasks: "inevolving_shared_category_tasks",
+  /** Flag do plano Starter: "true" | "false". Persiste após login via /auth/api/user/starter-plan. */
+  isStarterPlan: "inevolving_is_starter_plan",
 } as const;
 
 /** 1 = escuro, 2 = claro (legado docs) */

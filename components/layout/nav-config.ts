@@ -17,15 +17,17 @@ export type NavItem = {
   bottomNavLabel?: string;
   icon: typeof HomeIcon;
   bottom?: boolean;
+  /** Ocultar este item de navegação para usuários do plano Starter. */
+  starterHidden?: boolean;
 };
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", bottomNavLabel: "Início", icon: HomeIcon, bottom: true },
   { href: "#pomodoro", label: "Pomodoro", bottomNavLabel: "Pomodoro", icon: ClockIcon, bottom: true },
   { href: "/tarefas", label: "Tarefas", bottomNavLabel: "Tarefas", icon: ClipboardDocumentListIcon, bottom: true },
-  { href: "/financas", label: "Finanças", bottomNavLabel: "Finanças", icon: BanknotesIcon, bottom: true },
+  { href: "/financas", label: "Finanças", bottomNavLabel: "Finanças", icon: BanknotesIcon, bottom: true, starterHidden: true },
   { href: "/objetivos", label: "Objetivos", bottomNavLabel: "Metas", icon: FlagIcon },
-  { href: "/livros", label: "Livros", icon: BookOpenIcon },
+  { href: "/livros", label: "Livros", icon: BookOpenIcon, starterHidden: true },
   { href: "/motivacao", label: "Motivação", icon: SparklesIcon },
   { href: "/ajustes", label: "Ajustes", icon: Cog6ToothIcon },
   { href: "/ajuda", label: "Ajuda", icon: ChatBubbleLeftRightIcon },
