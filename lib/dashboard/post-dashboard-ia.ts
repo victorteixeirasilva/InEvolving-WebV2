@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "@/lib/constants";
-import type { JarvarAnalysis, Objective } from "@/lib/types/models";
+import type { Note, Objective } from "@/lib/types/models";
 
 const DASHBOARD_IA_PATH = "/auth/api/dashboard/ia";
 
@@ -21,8 +21,8 @@ function buildDescriptionObjectiveForIa(
   originalDescription: string | undefined,
   options: {
     userContext: string;
-    selectedHistory: JarvarAnalysis | null;
-    history: JarvarAnalysis[];
+    selectedHistory: Note | null;
+    history: Note[];
   }
 ): string {
   const lines: string[] = [];
@@ -42,13 +42,13 @@ function buildDescriptionObjectiveForIa(
   lines.push("");
   lines.push("--- Histórico de análises anteriores (mesmo objetivo) ---");
   lines.push(
-    "Abaixo: histórico de análises já geradas para este objetivo. A seção 'Análise referenciada' contém a resposta completa da IA que o usuário selecionou na interface para dar continuidade (ou indicação de que não há seleção). Em seguida, cada entrada do histórico recente traz a data, o texto livre que o usuário enviou naquela ocasião ('contexto na ocasião') e a resposta que o assistente deu ('resposta do assistente'). Use isso para manter coerência e evitar repetir o que já foi dito, salvo se fizer sentido."
+    "Abaixo: histórico de análises já geradas para este objetivo. A seção 'Análise referenciada' contém a resposta completa da IA que o usuário selecionou na interface para dar continuidade (ou indicação de que não há seleção). Em seguida, cada entrada do histórico recente traz a data e a resposta que o assistente deu ('resposta do assistente'). Use isso para manter coerência e evitar repetir o que já foi dito, salvo se fizer sentido."
   );
 
-  if (options.selectedHistory?.response?.trim()) {
+  if (options.selectedHistory?.content?.trim()) {
     lines.push("");
     lines.push("Análise referenciada pelo usuário na interface (continuidade):");
-    lines.push(options.selectedHistory.response.trim());
+    lines.push(options.selectedHistory.content.trim());
   } else {
     lines.push("");
     lines.push("Análise referenciada pelo usuário na interface: (nenhuma seleção — ignore continuidade explícita).");
@@ -62,8 +62,7 @@ function buildDescriptionObjectiveForIa(
     for (const h of options.history) {
       lines.push("");
       lines.push(`• Data/hora: ${h.createdAt}`);
-      lines.push(`  Contexto na ocasião (texto livre do usuário): ${h.userContext.trim() || "(vazio)"}`);
-      lines.push(`  Resposta do assistente: ${h.response.trim() || "(vazio)"}`);
+      lines.push(`  Resposta do assistente: ${h.content.trim() || "(vazio)"}`);
     }
   }
 
@@ -78,8 +77,8 @@ export function buildDashboardIaRequestBody(
   objective: Objective,
   options: {
     userContext: string;
-    selectedHistory: JarvarAnalysis | null;
-    history: JarvarAnalysis[];
+    selectedHistory: Note | null;
+    history: Note[];
   }
 ): Record<string, unknown> {
   const o = objective;

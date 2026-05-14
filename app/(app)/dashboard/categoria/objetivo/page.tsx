@@ -39,8 +39,10 @@ import { Button } from "@/components/ui/Button";
 import { STORAGE_KEYS } from "@/lib/constants";
 import { fetchCancellationReasons } from "@/lib/dashboard/fetch-cancellation-reasons";
 import { buildDashboardIaRequestBody, postDashboardIa } from "@/lib/dashboard/post-dashboard-ia";
+import { fetchObjectiveNotes } from "@/lib/objectives/notes/fetch-objective-notes";
+import { postObjectiveNote } from "@/lib/objectives/notes/post-objective-note";
 import { cn } from "@/lib/utils";
-import type { JarvarAnalysis, Objective, ObjectiveAnalyticsData } from "@/lib/types/models";
+import type { Note, Objective, ObjectiveAnalyticsData } from "@/lib/types/models";
 
 /* ─── Paleta de cores alinhada ao tema ─── */
 const COLORS = {
@@ -73,22 +75,6 @@ const emptyObjectiveAnalytics: ObjectiveAnalyticsData = {
   tasksByPriority: [],
 };
 
-/* ─── helpers localStorage ─── */
-function jarvarKey(objectiveId: number | string) {
-  return `${STORAGE_KEYS.jarvarPrefix}${objectiveId}`;
-}
-function loadHistory(objectiveId: number | string): JarvarAnalysis[] {
-  try {
-    return JSON.parse(localStorage.getItem(jarvarKey(objectiveId)) ?? "[]") as JarvarAnalysis[];
-  } catch {
-    return [];
-  }
-}
-function saveHistory(objectiveId: number | string, history: JarvarAnalysis[]) {
-  try {
-    localStorage.setItem(jarvarKey(objectiveId), JSON.stringify(history));
-  } catch { /* ignore */ }
-}
 
 /* ─── Stat card ─── */
 function StatCard({
@@ -138,9 +124,9 @@ function JarvarHistoryPanel({
   onSelect,
   selected,
 }: {
-  history: JarvarAnalysis[];
-  onSelect: (a: JarvarAnalysis | null) => void;
-  selected: JarvarAnalysis | null;
+  history: Note[];
+  onSelect: (a: Note | null) => void;
+  selected: Note | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -201,13 +187,8 @@ function JarvarHistoryPanel({
                           minute: "2-digit",
                         })}
                       </p>
-                      {a.userContext && (
-                        <p className="mt-0.5 truncate text-xs text-[var(--text-muted)]">
-                          {a.userContext}
-                        </p>
-                      )}
                       <p className="mt-1 line-clamp-2 text-xs text-[var(--text-muted)]">
-                        {a.response.replace(/\*\*/g, "").slice(0, 120)}…
+                        {a.content.replace(/\*\*/g, "").slice(0, 120)}…
                       </p>
                     </div>
                   </button>
@@ -229,7 +210,7 @@ function JarvarHistoryPanel({
             Análise selecionada como contexto
           </p>
           <p className="whitespace-pre-line text-sm text-[var(--text-muted)]">
-            {selected.response}
+            {selected.content}
           </p>
           <button
             type="button"
@@ -276,6 +257,125 @@ function AnalysisText({ text }: { text: string }) {
   );
 }
 
+/* ─── Etapas de análise da IA ─── */
+const ANALYZE_STEPS = [
+  "Coletando dados do objetivo…",
+  "Processando padrões de tarefas…",
+  "Identificando bloqueios e tendências…",
+  "Gerando insights personalizados…",
+  "Finalizando análise…",
+] as const;
+
+const STEP_PROGRESS_TARGETS = [18, 38, 58, 76, 88] as const;
+
+/* ─── Overlay de análise em andamento ─── */
+function AnalyzingOverlay({ progress, stepIdx }: { progress: number; stepIdx: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col items-center gap-6 rounded-2xl border border-brand-purple/30 bg-gradient-to-br from-brand-purple/10 via-[var(--glass-bg)] to-brand-cyan/5 p-8 backdrop-blur-glass"
+      style={{
+        backgroundImage:
+          "radial-gradient(rgba(0,188,212,0.08) 1px, transparent 1px)",
+        backgroundSize: "22px 22px",
+      }}
+    >
+      {/* Orb central animado */}
+      <div className="relative flex h-24 w-24 items-center justify-center">
+        <motion.div
+          animate={{ scale: [1, 1.5, 1], opacity: [0.25, 0, 0.25] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 rounded-full border border-brand-cyan/40"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0, 0.4] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+          className="absolute inset-3 rounded-full border border-brand-purple/50"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.15, 1], opacity: [0.6, 0.2, 0.6] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.9 }}
+          className="absolute inset-6 rounded-full border border-brand-pink/40"
+        />
+        <motion.div
+          animate={{ scale: [0.93, 1.07, 0.93] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-purple/70 to-brand-cyan/50"
+          style={{ boxShadow: "0 0 32px rgba(0,188,212,0.5), 0 0 64px rgba(123,44,191,0.3)" }}
+        >
+          <SparklesIcon className="h-7 w-7 text-white" aria-hidden />
+        </motion.div>
+      </div>
+
+      {/* Label + mensagem de etapa */}
+      <div className="text-center">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-brand-cyan">
+          Jarvas · Analisando
+        </p>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={stepIdx}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            className="font-mono text-sm text-[var(--text-primary)]"
+          >
+            {ANALYZE_STEPS[Math.min(stepIdx, ANALYZE_STEPS.length - 1)]}
+            <motion.span
+              animate={{ opacity: [1, 0, 1] }}
+              transition={{ duration: 0.9, repeat: Infinity }}
+              className="ml-0.5 inline-block text-brand-cyan"
+            >
+              ▊
+            </motion.span>
+          </motion.p>
+        </AnimatePresence>
+      </div>
+
+      {/* Barra de progresso */}
+      <div className="w-full max-w-xs space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-mono uppercase tracking-wider text-[var(--text-muted)]">
+            Processando
+          </span>
+          <motion.span
+            key={Math.round(progress)}
+            initial={{ opacity: 0.6 }}
+            animate={{ opacity: 1 }}
+            className="font-mono font-bold text-brand-cyan"
+          >
+            {Math.round(progress)}%
+          </motion.span>
+        </div>
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
+          <motion.div
+            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-brand-purple via-brand-cyan to-brand-pink"
+            animate={{ width: `${progress}%` }}
+            transition={{ ease: "easeOut", duration: 0.5 }}
+            style={{ boxShadow: "0 0 12px rgba(0,188,212,0.7), 0 0 24px rgba(0,188,212,0.3)" }}
+          />
+          <motion.div
+            animate={{ x: ["-80px", "400px"] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-y-0 w-16 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+          />
+        </div>
+      </div>
+
+      {/* Mensagem de espera */}
+      <p className="max-w-xs text-center text-xs leading-relaxed text-[var(--text-muted)]">
+        Aguarde enquanto Jarvas processa os dados do seu objetivo.
+        <br />
+        Isso pode levar alguns instantes.
+      </p>
+    </motion.div>
+  );
+}
+
 /* ─── Page ─── */
 export default function ObjetivoAnalisePage() {
   const router = useRouter();
@@ -283,12 +383,37 @@ export default function ObjetivoAnalisePage() {
   const [analytics, setAnalytics] = useState<ObjectiveAnalyticsData | null>(null);
 
   /* JARVAR state */
-  const [history, setHistory] = useState<JarvarAnalysis[]>([]);
-  const [selectedHistory, setSelectedHistory] = useState<JarvarAnalysis | null>(null);
-  const [userContext, setUserContext] = useState("");
+  const [history, setHistory] = useState<Note[]>([]);
+  const [selectedHistory, setSelectedHistory] = useState<Note | null>(null);
+  const [notesLoading, setNotesLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeProgress, setAnalyzeProgress] = useState(0);
+  const [analyzeStepIdx, setAnalyzeStepIdx] = useState(0);
   const [currentAnalysis, setCurrentAnalysis] = useState<string | null>(null);
   const analysisRef = useRef<HTMLDivElement>(null);
+
+  /* Simula progresso enquanto a IA processa */
+  useEffect(() => {
+    if (!analyzing) return;
+    setAnalyzeProgress(0);
+    setAnalyzeStepIdx(0);
+
+    let prog = 0;
+    let stepIdx = 0;
+
+    const interval = setInterval(() => {
+      const target = STEP_PROGRESS_TARGETS[stepIdx] ?? 88;
+      prog = Math.min(prog + 1.1, target);
+      setAnalyzeProgress(prog);
+
+      if (prog >= target && stepIdx < STEP_PROGRESS_TARGETS.length - 1) {
+        stepIdx += 1;
+        setAnalyzeStepIdx(stepIdx);
+      }
+    }, 135);
+
+    return () => clearInterval(interval);
+  }, [analyzing]);
 
   useEffect(() => {
     let cancelled = false;
@@ -301,7 +426,6 @@ export default function ObjetivoAnalisePage() {
       }
       const parsed = JSON.parse(raw) as Objective;
       setObj(parsed);
-      setHistory(loadHistory(parsed.id));
 
       const loadAnalytics = async () => {
         // TODO (backend): desenvolver endpoint autenticado que retorne `weeklyProgress` (evolução semanal) por objetivo; substituir mock abaixo.
@@ -321,6 +445,24 @@ export default function ObjetivoAnalisePage() {
         const cancelPromise = jwtToken
           ? fetchCancellationReasons(parsed.id, jwtToken)
           : Promise.resolve({ kind: "skipped_no_token" as const });
+
+        if (jwtToken) {
+          setNotesLoading(true);
+          fetchObjectiveNotes(jwtToken, parsed.id)
+            .then((res) => {
+              if (cancelled) return;
+              if (res.kind === "unauthorized") {
+                router.push("/login");
+                window.alert("Você não está logado, por favor faça login novamente.");
+                return;
+              }
+              if (res.kind === "ok") setHistory(res.notes);
+              // "not_found" | erros — mantém lista vazia
+            })
+            .finally(() => {
+              if (!cancelled) setNotesLoading(false);
+            });
+        }
 
         const [mockData, cancelRes] = await Promise.all([mockPromise, cancelPromise]);
         if (cancelled) return;
@@ -372,7 +514,7 @@ export default function ObjetivoAnalisePage() {
       }
 
       const payload = buildDashboardIaRequestBody(obj, {
-        userContext,
+        userContext: "",
         selectedHistory,
         history,
       });
@@ -393,29 +535,32 @@ export default function ObjetivoAnalisePage() {
 
       const responseText = result.responseText;
 
-      const newEntry: JarvarAnalysis = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        objectiveId: obj.id,
-        createdAt: new Date().toISOString(),
-        userContext: userContext.trim(),
-        response: responseText,
-        objectiveSnapshot: obj,
-      };
+      setAnalyzeProgress(100);
+      await new Promise((r) => setTimeout(r, 700));
 
-      const updated = [newEntry, ...history].slice(0, 10);
-      setHistory(updated);
-      saveHistory(obj.id, updated);
       setCurrentAnalysis(responseText);
-      setUserContext("");
       setSelectedHistory(null);
+
+      const noteResult = await postObjectiveNote(jwtToken, obj.id, responseText);
+      if (noteResult.kind === "unauthorized") {
+        router.push("/login");
+        window.alert("Você não está logado, por favor faça login novamente.");
+        return;
+      }
+      if (noteResult.kind === "ok") {
+        setHistory((prev) => [noteResult.note, ...prev]);
+      }
+      // Em caso de erro ao salvar — análise já exibida localmente; não bloqueia o usuário
 
       setTimeout(() => analysisRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } catch {
       window.alert("Falha de conexão. Verifique sua internet.");
     } finally {
       setAnalyzing(false);
+      setAnalyzeProgress(0);
+      setAnalyzeStepIdx(0);
     }
-  }, [obj, userContext, selectedHistory, history, router]);
+  }, [obj, selectedHistory, history, router]);
 
   if (!obj) {
     return (
@@ -645,11 +790,15 @@ export default function ObjetivoAnalisePage() {
         </div>
 
         {/* histórico */}
-        <JarvarHistoryPanel
-          history={history}
-          onSelect={setSelectedHistory}
-          selected={selectedHistory}
-        />
+        {notesLoading ? (
+          <p className="mb-4 text-xs text-[var(--text-muted)]">Carregando histórico…</p>
+        ) : (
+          <JarvarHistoryPanel
+            history={history}
+            onSelect={setSelectedHistory}
+            selected={selectedHistory}
+          />
+        )}
 
         {/* resultado atual */}
         <AnimatePresence>
@@ -670,43 +819,36 @@ export default function ObjetivoAnalisePage() {
           )}
         </AnimatePresence>
 
-        {/* input de contexto + botão */}
-        <div className="flex flex-col gap-3">
-          <textarea
-            value={userContext}
-            onChange={(e) => setUserContext(e.target.value)}
-            rows={3}
-            placeholder={
-              selectedHistory
-                ? "Descreva o que mudou desde a análise anterior…"
-                : "Adicione contexto para a análise (opcional): o que mudou, bloqueios atuais, foco desta semana…"
-            }
-            className={cn(
-              "w-full resize-none rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-3",
-              "text-sm text-[var(--text-primary)] backdrop-blur-glass placeholder:text-[var(--text-muted)]",
-              "transition-[box-shadow,border-color] duration-[380ms] ease-liquid",
-              "focus:border-brand-cyan focus:shadow-[0_0_0_3px_rgba(0,188,212,0.25)] focus:outline-none"
-            )}
-          />
-          <Button
-            type="button"
-            onClick={runAnalysis}
-            disabled={analyzing}
-            className="w-full sm:w-auto sm:self-end"
-          >
-            {analyzing ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Analisando…
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <SparklesIcon className="h-4 w-4" aria-hidden />
-                {selectedHistory ? "Nova análise com contexto anterior" : "Analisar objetivo"}
-              </span>
-            )}
-          </Button>
-        </div>
+        {/* Overlay de análise / botão */}
+        <AnimatePresence mode="wait">
+          {analyzing ? (
+            <AnalyzingOverlay
+              key="overlay"
+              progress={analyzeProgress}
+              stepIdx={analyzeStepIdx}
+            />
+          ) : (
+            <motion.div
+              key="btn"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="flex justify-end"
+            >
+              <Button
+                type="button"
+                onClick={runAnalysis}
+                className="w-full sm:w-auto"
+              >
+                <span className="flex items-center gap-2">
+                  <SparklesIcon className="h-4 w-4" aria-hidden />
+                  {selectedHistory ? "Nova análise com contexto anterior" : "Analisar objetivo"}
+                </span>
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </GlassCard>
     </div>
   );

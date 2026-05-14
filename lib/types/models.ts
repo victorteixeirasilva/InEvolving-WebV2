@@ -154,14 +154,15 @@ export interface Sonho {
   idUser?: number | string;
 }
 
-/** Snapshot de análise JARVAR (IA) armazenada localmente por objetivo. */
-export interface JarvarAnalysis {
+/** Nota de análise JARVAR (IA) persistida no servidor via /auth/api/objectives/notes. */
+export interface Note {
   id: string;
-  objectiveId: number | string;
-  createdAt: string; // ISO-8601
-  userContext: string;
-  response: string;
-  objectiveSnapshot: Objective;
+  idUser: string;
+  idObjective: string;
+  /** Conteúdo Markdown gerado pela IA. */
+  content: string;
+  /** ISO 8601 sem timezone — horário do servidor (UTC-3). */
+  createdAt: string;
 }
 
 /** Dados enriquecidos retornados por GET /api/mock/objetivo-analise/{id} */
