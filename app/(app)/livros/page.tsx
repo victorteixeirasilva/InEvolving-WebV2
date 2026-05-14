@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpenIcon } from "@heroicons/react/24/outline";
 import { LivrosKanbanBoard } from "@/components/features/livros/LivrosKanbanBoard";
+import { LivrosIntroBanner } from "@/components/features/livros/LivrosIntroBanner";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { STORAGE_KEYS, WHATSAPP_RENEWAL_URL } from "@/lib/constants";
 import { fetchAllBooksForUser } from "@/lib/books/fetch-books";
@@ -14,6 +15,7 @@ import { useStarterPlan } from "@/hooks/use-starter-plan";
 export default function LivrosPage() {
   const router = useRouter();
   const isStarterPlan = useStarterPlan();
+  const [showIntro, setShowIntro] = useState(true);
   const authRedirect401Ref = useRef(false);
   const handleUnauthorized = useCallback(() => {
     if (!authRedirect401Ref.current) {
@@ -126,7 +128,10 @@ export default function LivrosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 pt-4 md:pt-6">
+    <>
+      {showIntro && <LivrosIntroBanner onDismiss={() => setShowIntro(false)} />}
+
+      <div className="mx-auto max-w-7xl space-y-6 pt-4 md:pt-6">
       <h1 className="text-2xl font-bold">Livros</h1>
 
       {loading ? (
@@ -152,5 +157,6 @@ export default function LivrosPage() {
         />
       )}
     </div>
+    </>
   );
 }
