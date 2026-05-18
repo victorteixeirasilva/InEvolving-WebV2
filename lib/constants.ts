@@ -83,6 +83,8 @@ export const STORAGE_KEYS = {
   sharedCategoryTasks: "inevolving_shared_category_tasks",
   /** Flag do plano Starter: "true" | "false". Persiste após login via /auth/api/user/starter-plan. */
   isStarterPlan: "inevolving_is_starter_plan",
+  /** Consentimento LGPD para cookies de análise (Google Analytics): "granted" | "denied". */
+  cookieConsentAnalytics: "inevolving_cookie_consent_analytics",
 } as const;
 
 /** 1 = escuro, 2 = claro (legado docs) */

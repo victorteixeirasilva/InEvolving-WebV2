@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftRightIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { CookiePreferencesSection } from "@/components/features/ajustes/CookiePreferencesSection";
 import { ForgotPasswordModal } from "@/components/features/auth/ForgotPasswordModal";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
@@ -726,6 +727,8 @@ export function AjustesClient() {
           )}
         </ul>
       </GlassCard>
+
+      <CookiePreferencesSection />
 
       <GlassCard className="space-y-4">
         <div className="flex items-center gap-2">

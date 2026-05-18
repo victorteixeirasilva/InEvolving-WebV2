@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AnalyticsWithConsent } from "@/components/analytics/AnalyticsWithConsent";
+import { CookieConsentBanner } from "@/components/layout/CookieConsentBanner";
 import { ChunkLoadRecovery } from "@/components/layout/ChunkLoadRecovery";
 import { ClientRootErrorBoundary } from "@/components/layout/ClientRootErrorBoundary";
 import { AppToaster } from "@/components/ui/AppToaster";
@@ -31,6 +33,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <PomodoroManager />
           {children}
           <AppToaster />
+          <CookieConsentBanner />
+          <AnalyticsWithConsent />
         </StyledComponentsRegistry>
       </QueryClientProvider>
     </ClientRootErrorBoundary>
