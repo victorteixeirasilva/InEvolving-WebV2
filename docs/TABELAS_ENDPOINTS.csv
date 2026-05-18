@@ -46,12 +46,23 @@ Tela,Componente,Metodo,Endpoint,Payload_Query_Exibicao,Observacoes
 /tarefas,editarTarefa,PATCH,/auth/api/tasks/date/{id}/{YYYY-MM-DD},,
 /tarefas,editarTarefa,GET,/auth/api/dashboard/cancellation-reason?idObjective=,Motivos,
 /tarefas,menuStatusTarefa,PATCH,/auth/api/tasks/status/todo|progress|done|late/{id},Bearer,
+/tarefas,EditarTarefaModal,GET,/auth/api/tasks/responsible/{idTask},Bearer,"Resposta: idTask, idResponsibleUser (null = criador)"
+/tarefas,EditarTarefaModal,PUT,/auth/api/tasks/responsible,"idTask, idResponsibleUser (null remove)",Desligado se sharedTask
+/tarefas,EditarSubtarefaModal,GET,/auth/api/tasks/responsible/{idTask},Bearer,Subtarefa UUID apenas
+/tarefas,EditarSubtarefaModal,PUT,/auth/api/tasks/responsible,"idTask, idResponsibleUser",enableResponsibleApi
+/tarefas,SubtarefasKanban,GET,/auth/api/tasks/subtask/{idParentTask},Bearer,Array de subtarefas
+/tarefas,SubtarefasKanban,POST,/auth/api/tasks/subtask,"nameTask, descriptionTask, dateTask, idParentTask",idUser via JWT
+/tarefas,SubtarefasKanban,DELETE,/auth/api/tasks/subtask/{idTask},Bearer,UUID da subtarefa
+/dashboard/categoria/objetivo,Jarvas,GET,/auth/api/objectives/notes/{idObjective},Bearer,Lista notas IA; 404 = vazio
+/dashboard/categoria/objetivo,Jarvas,POST,/auth/api/objectives/notes/{idObjective},"{ content }",Markdown persistido apos IA
 /financas,page.tsx,GET,/auth/api/finance/{inicio}/{fim},Path datas mes,ResponseFinancas
 /financas,page.tsx,DELETE,/auth/api/finance/transaction/{id},Bearer,
 /financas,page.tsx,POST,/auth/api/finance/transaction/cost_of_living,Body transacao,
 /financas,page.tsx,POST,/auth/api/finance/transaction/investment,Body transacao,
 /financas,page.tsx,POST,/auth/api/finance/transaction/extra_contribution,Body transacao,
 /financas,page.tsx,PUT ou PATCH,/auth/api/finance/wage,Body salario,
+/financas,CompartilharFinancasModal,-,-,"URL /financas/compartilhado?token=JWT",sessionStorage financeShareEntry; sem endpoint
+/financas/compartilhado,page.tsx,-,-,JWT na query,Leitura finanças com token injetado
 /livros,page.tsx,POST,/auth/api/books,"title, author, theme, coverImage",
 /livros,page.tsx,GET,/auth/api/books/status/todo,Bearer,
 /livros,page.tsx,GET,/auth/api/books/status/progress,Bearer,
@@ -71,9 +82,16 @@ MenuResumo,MenuResumo,GET,/auth/api/tasks/{YYYY-MM-DD},Bearer,Calendario
 /dashboard popup,editarCategoria,DELETE,path composto categories/objective/{cat}/{obj},Ver codigo,
 /dashboard popup,editarCategoria,DELETE,/auth/api/categories/{id},,
 /dashboard popup,editarCategoria,GET,/auth/api/objectives/user,Bearer,
-/ajustes,page.tsx,-,localStorage,tema tipoMenuDesk,Sem API
-/ajustes,AlterarInformacoesDoUsuario,-,-,Mock nome email,API comentada
-/ajustes,VerListaDeAmigos,-,-,Mock lista,
-/ajustes,RenovacaoPopUp,-,-,Mock data,
+/ajustes,page.tsx,-,localStorage,tema tipoMenuDesk,Preferencias locais + APIs abaixo
+/ajustes,AjustesClient,GET,/auth/api/user/profile,Bearer,Perfil completo
+/ajustes,AjustesClient,PATCH,/auth/api/user/profile,"fullName, cpf, dateOfBirth, ...",Sem e-mail no body
+/ajustes,AjustesClient,PATCH,/auth/api/user/email,{ email },Confirmacao por link
+/ajustes,login flow,GET,/auth/api/user/starter-plan,Bearer,isStarterPlan oculta Financas/Livros
+/ajustes,CookiePreferencesSection,-,-,cookie-consent-store,Sem endpoint; GA4 apos consentimento
+/ajustes,VerListaDeAmigos,-,-,Mock lista,Legado local
 /ajustes,EsqueciSenha,POST,/api/authentication/forgot,userEmail,
+/privacidade,page.tsx,-,-,Conteudo estatico,LGPD / cookies
+/pomodoro,PomodoroTimer,-,-,pomodoro-store,Sem API; timer client-side
+/sobre,EvolutionQuiz,-,-,Client-side,Quiz sem backend
+/global,AnalyticsWithConsent,-,-,NEXT_PUBLIC_GA_MEASUREMENT_ID,Google Analytics 4 com consentimento
 /ajuda,page.tsx,-,linkWpp externo,WhatsApp,
