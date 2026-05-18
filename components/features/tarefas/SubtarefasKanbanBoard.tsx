@@ -21,6 +21,8 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { STATUS_META } from "@/components/features/tarefas/KanbanBoard";
+import { TaskIdCopyRow } from "@/components/features/tarefas/TaskIdCopyRow";
+import { TaskResponsibleLine } from "@/components/features/tarefas/TaskResponsibleLine";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import {
   emptySubtaskKanbanOrder,
@@ -69,7 +71,15 @@ const subKanbanCollisionDetection: CollisionDetection = (args) => {
   return closestCorners(args);
 };
 
-function SortableSubCardDesktop({ sub, onEdit }: { sub: TarefaSubtarefa; onEdit: (s: TarefaSubtarefa) => void }) {
+function SortableSubCardDesktop({
+  sub,
+  onEdit,
+  viewerUserId,
+}: {
+  sub: TarefaSubtarefa;
+  onEdit: (s: TarefaSubtarefa) => void;
+  viewerUserId: string | null;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: sub.id,
     data: { status: sub.status, type: "subtask" },
@@ -95,10 +105,12 @@ function SortableSubCardDesktop({ sub, onEdit }: { sub: TarefaSubtarefa; onEdit:
       >
         {sub.nameTask}
       </button>
+      <TaskIdCopyRow taskId={sub.id} className="mb-0.5" />
       <div {...listeners} {...attributes} className="flex cursor-grab touch-none flex-col gap-1 active:cursor-grabbing">
         {sub.descriptionTask ? (
           <p className="line-clamp-2 text-[11px] text-[var(--text-muted)]">{sub.descriptionTask}</p>
         ) : null}
+        <TaskResponsibleLine entity={sub} viewerUserId={viewerUserId} />
         <div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
           <CalendarDaysIcon className="h-3 w-3 shrink-0" aria-hidden />
           <span>{fmt}</span>
@@ -108,7 +120,13 @@ function SortableSubCardDesktop({ sub, onEdit }: { sub: TarefaSubtarefa; onEdit:
   );
 }
 
-function SubCardOverlay({ sub }: { sub: TarefaSubtarefa }) {
+function SubCardOverlay({
+  sub,
+  viewerUserId,
+}: {
+  sub: TarefaSubtarefa;
+  viewerUserId: string | null;
+}) {
   const fmt = parseLocalYmdAtNoon(sub.dateTask).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
   return (
     <div
@@ -118,6 +136,8 @@ function SubCardOverlay({ sub }: { sub: TarefaSubtarefa }) {
       )}
     >
       <p className="text-xs font-semibold text-[var(--text-primary)]">{sub.nameTask}</p>
+      <TaskIdCopyRow taskId={sub.id} className="mt-0.5" />
+      <TaskResponsibleLine entity={sub} viewerUserId={viewerUserId} className="mt-0.5" />
       <div className="mt-1 flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
         <CalendarDaysIcon className="h-3 w-3" aria-hidden />
         {fmt}
@@ -131,11 +151,13 @@ function SortableSubCardMobile({
   onEdit,
   onStatusChange,
   activeCol,
+  viewerUserId,
 }: {
   sub: TarefaSubtarefa;
   onEdit: (s: TarefaSubtarefa) => void;
   onStatusChange: (id: string, status: TarefaStatus) => void;
   activeCol: TarefaStatus;
+  viewerUserId: string | null;
 }) {
   const meta = STATUS_META[activeCol];
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -163,10 +185,12 @@ function SortableSubCardMobile({
         >
           {sub.nameTask}
         </button>
+        <TaskIdCopyRow taskId={sub.id} className="mt-0.5" />
         <div {...listeners} {...attributes} className="mt-0.5 cursor-grab touch-none active:cursor-grabbing">
           {sub.descriptionTask ? (
             <p className="line-clamp-2 text-[11px] text-[var(--text-muted)]">{sub.descriptionTask}</p>
           ) : null}
+          <TaskResponsibleLine entity={sub} viewerUserId={viewerUserId} />
           <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
             <CalendarDaysIcon className="h-3 w-3" aria-hidden />
             {fmt}
@@ -197,6 +221,7 @@ function DroppableSubColumn({
   isDropTarget,
   isSourceColumn,
   isDraggingBoard,
+  viewerUserId,
 }: {
   status: TarefaStatus;
   orderedSubs: TarefaSubtarefa[];
@@ -204,6 +229,7 @@ function DroppableSubColumn({
   isDropTarget: boolean;
   isSourceColumn: boolean;
   isDraggingBoard: boolean;
+  viewerUserId: string | null;
 }) {
   const meta = STATUS_META[status];
   const { setNodeRef, isOver } = useDroppable({ id: status });
@@ -244,7 +270,9 @@ function DroppableSubColumn({
               {isDropTarget ? <p className="text-[10px] font-semibold text-brand-cyan">Solte aqui</p> : null}
             </div>
           ) : (
-            orderedSubs.map((s) => <SortableSubCardDesktop key={s.id} sub={s} onEdit={onEdit} />)
+            orderedSubs.map((s) => (
+              <SortableSubCardDesktop key={s.id} sub={s} onEdit={onEdit} viewerUserId={viewerUserId} />
+            ))
           )}
         </SortableContext>
       </div>
@@ -257,11 +285,13 @@ function MobileSubKanban({
   columnOrder,
   onEdit,
   onStatusChange,
+  viewerUserId,
 }: {
   subtasks: TarefaSubtarefa[];
   columnOrder: Record<TarefaStatus, string[]>;
   onEdit: (s: TarefaSubtarefa) => void;
   onStatusChange: (id: string, status: TarefaStatus) => void;
+  viewerUserId: string | null;
 }) {
   const [activeCol, setActiveCol] = useState<TarefaStatus>("PENDING");
   const meta = STATUS_META[activeCol];
@@ -304,6 +334,7 @@ function MobileSubKanban({
                 onEdit={onEdit}
                 onStatusChange={onStatusChange}
                 activeCol={activeCol}
+                viewerUserId={viewerUserId}
               />
             ))
           )}
@@ -317,9 +348,15 @@ export type SubtarefasKanbanBoardProps = {
   subtasks: TarefaSubtarefa[];
   onSubtasksChange: (next: TarefaSubtarefa[]) => void;
   onEditSubtask: (s: TarefaSubtarefa) => void;
+  viewerUserId?: string | null;
 };
 
-export function SubtarefasKanbanBoard({ subtasks, onSubtasksChange, onEditSubtask }: SubtarefasKanbanBoardProps) {
+export function SubtarefasKanbanBoard({
+  subtasks,
+  onSubtasksChange,
+  onEditSubtask,
+  viewerUserId = null,
+}: SubtarefasKanbanBoardProps) {
   const [columnOrder, setColumnOrder] = useState<Record<TarefaStatus, string[]>>(emptySubtaskKanbanOrder);
   const [dragging, setDragging] = useState<TarefaSubtarefa | null>(null);
   const [overWhileDrag, setOverWhileDrag] = useState<UniqueIdentifier | null>(null);
@@ -439,6 +476,7 @@ export function SubtarefasKanbanBoard({ subtasks, onSubtasksChange, onEditSubtas
                 isDropTarget={isTarget}
                 isSourceColumn={isSource}
                 isDraggingBoard={isDraggingBoard}
+                viewerUserId={viewerUserId}
               />
             );
           })}
@@ -449,10 +487,11 @@ export function SubtarefasKanbanBoard({ subtasks, onSubtasksChange, onEditSubtas
           columnOrder={columnOrder}
           onEdit={onEditSubtask}
           onStatusChange={applyStatus}
+          viewerUserId={viewerUserId}
         />
       )}
       <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18,0.67,0.6,1.22)" }}>
-        {dragging ? <SubCardOverlay sub={dragging} /> : null}
+        {dragging ? <SubCardOverlay sub={dragging} viewerUserId={viewerUserId} /> : null}
       </DragOverlay>
     </DndContext>
   );

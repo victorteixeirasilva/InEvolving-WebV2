@@ -34,6 +34,8 @@ import {
   UserGroupIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
+import { TaskIdCopyRow } from "@/components/features/tarefas/TaskIdCopyRow";
+import { TaskResponsibleLine } from "@/components/features/tarefas/TaskResponsibleLine";
 import { cn } from "@/lib/utils";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { subtasksProgress } from "@/lib/subtarefas";
@@ -153,9 +155,11 @@ function SubtasksProgressBadge({ task }: { task: Tarefa }) {
 function SortableTaskCardDesktop({
   task,
   onEdit,
+  viewerUserId,
 }: {
   task: Tarefa;
   onEdit: (t: Tarefa) => void;
+  viewerUserId: string | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: taskDndId(task),
@@ -190,6 +194,7 @@ function SortableTaskCardDesktop({
       >
         {task.nameTask}
       </button>
+      <TaskIdCopyRow taskId={task.id} className="mb-1" />
 
       <div
         {...listeners}
@@ -199,6 +204,7 @@ function SortableTaskCardDesktop({
         {task.descriptionTask && (
           <p className="line-clamp-2 text-xs text-[var(--text-muted)]">{task.descriptionTask}</p>
         )}
+        <TaskResponsibleLine entity={task} sharedTask={task.sharedTask} viewerUserId={viewerUserId} />
         {task.sharedTask && (
           <p className="text-[10px] text-[var(--text-muted)]">
             Por{" "}
@@ -225,7 +231,13 @@ function SortableTaskCardDesktop({
   );
 }
 
-function TaskCardOverlay({ task }: { task: Tarefa }) {
+function TaskCardOverlay({
+  task,
+  viewerUserId,
+}: {
+  task: Tarefa;
+  viewerUserId: string | null;
+}) {
   const fmt = parseLocalYmdAtNoon(task.dateTask).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "short",
@@ -238,9 +250,11 @@ function TaskCardOverlay({ task }: { task: Tarefa }) {
       )}
     >
       <p className="text-sm font-semibold text-[var(--text-primary)]">{task.nameTask}</p>
+      <TaskIdCopyRow taskId={task.id} className="mt-0.5" />
       {task.descriptionTask && (
         <p className="mt-1 line-clamp-2 text-xs text-[var(--text-muted)]">{task.descriptionTask}</p>
       )}
+      <TaskResponsibleLine entity={task} sharedTask={task.sharedTask} viewerUserId={viewerUserId} className="mt-1" />
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
         <CalendarDaysIcon className="h-3 w-3 shrink-0" aria-hidden />
         <span>{fmt}</span>
@@ -261,11 +275,13 @@ function SortableTaskCardMobile({
   onEdit,
   onStatusChange,
   activeCol,
+  viewerUserId,
 }: {
   task: Tarefa;
   onEdit: (t: Tarefa) => void;
   onStatusChange: (id: number | string, status: TarefaStatus) => void;
   activeCol: TarefaStatus;
+  viewerUserId: string | null;
 }) {
   const meta = STATUS_META[activeCol];
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -298,6 +314,7 @@ function SortableTaskCardMobile({
         >
           <p className="font-semibold text-[var(--text-primary)] hover:text-brand-cyan transition-colors">{task.nameTask}</p>
         </button>
+        <TaskIdCopyRow taskId={task.id} className="mt-0.5" />
         <div
           {...listeners}
           {...attributes}
@@ -306,6 +323,7 @@ function SortableTaskCardMobile({
           {task.descriptionTask && (
             <p className="text-xs text-[var(--text-muted)] line-clamp-2">{task.descriptionTask}</p>
           )}
+          <TaskResponsibleLine entity={task} sharedTask={task.sharedTask} viewerUserId={viewerUserId} />
           {task.sharedTask && (
             <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
               Por{" "}
@@ -350,6 +368,7 @@ function DroppableColumn({
   isDropTarget,
   isSourceColumn,
   isDraggingBoard,
+  viewerUserId,
 }: {
   status: TarefaStatus;
   orderedTasks: Tarefa[];
@@ -357,6 +376,7 @@ function DroppableColumn({
   isDropTarget: boolean;
   isSourceColumn: boolean;
   isDraggingBoard: boolean;
+  viewerUserId: string | null;
 }) {
   const meta = STATUS_META[status];
   const { setNodeRef, isOver } = useDroppable({ id: status });
@@ -402,7 +422,9 @@ function DroppableColumn({
               )}
             </div>
           ) : (
-            orderedTasks.map((t) => <SortableTaskCardDesktop key={t.id} task={t} onEdit={onEdit} />)
+            orderedTasks.map((t) => (
+              <SortableTaskCardDesktop key={t.id} task={t} onEdit={onEdit} viewerUserId={viewerUserId} />
+            ))
           )}
         </SortableContext>
       </div>
@@ -415,11 +437,13 @@ function MobileKanban({
   columnOrder,
   onEdit,
   onStatusChange,
+  viewerUserId,
 }: {
   tasks: Tarefa[];
   columnOrder: Record<TarefaStatus, string[]>;
   onEdit: (t: Tarefa) => void;
   onStatusChange: (id: number | string, status: TarefaStatus) => void;
+  viewerUserId: string | null;
 }) {
   const [activeCol, setActiveCol] = useState<TarefaStatus>("PENDING");
   const meta = STATUS_META[activeCol];
@@ -467,6 +491,7 @@ function MobileKanban({
                 onEdit={onEdit}
                 onStatusChange={onStatusChange}
                 activeCol={activeCol}
+                viewerUserId={viewerUserId}
               />
             ))
           )}
@@ -481,10 +506,12 @@ export function KanbanBoard({
   tasks,
   onStatusChange,
   onEdit,
+  viewerUserId = null,
 }: {
   tasks: Tarefa[];
   onStatusChange: (id: number | string, status: TarefaStatus) => void;
   onEdit: (t: Tarefa) => void;
+  viewerUserId?: string | null;
 }) {
   const [columnOrder, setColumnOrder] = useState<Record<TarefaStatus, string[]>>(emptyKanbanOrder);
   const [draggingTask, setDraggingTask] = useState<Tarefa | null>(null);
@@ -616,6 +643,7 @@ export function KanbanBoard({
                 isDropTarget={isTarget}
                 isSourceColumn={isSource}
                 isDraggingBoard={isDraggingBoard}
+                viewerUserId={viewerUserId}
               />
             );
           })}
@@ -626,11 +654,12 @@ export function KanbanBoard({
           columnOrder={columnOrder}
           onEdit={onEdit}
           onStatusChange={onStatusChange}
+          viewerUserId={viewerUserId}
         />
       )}
 
       <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.18,0.67,0.6,1.22)" }}>
-        {draggingTask ? <TaskCardOverlay task={draggingTask} /> : null}
+        {draggingTask ? <TaskCardOverlay task={draggingTask} viewerUserId={viewerUserId} /> : null}
       </DragOverlay>
     </DndContext>
   );

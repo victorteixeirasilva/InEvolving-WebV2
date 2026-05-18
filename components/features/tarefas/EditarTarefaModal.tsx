@@ -15,6 +15,7 @@ import { GlassSelect } from "@/components/ui/GlassSelect";
 import { DateField } from "@/components/ui/DateField";
 import { RecurringTaskSwitch } from "@/components/ui/RecurringTaskSwitch";
 import { EditarSubtarefaModal } from "@/components/features/tarefas/EditarSubtarefaModal";
+import { TaskIdCopyRow } from "@/components/features/tarefas/TaskIdCopyRow";
 import { SubtarefasKanbanBoard } from "@/components/features/tarefas/SubtarefasKanbanBoard";
 import { CancelarTarefaModal } from "@/components/features/tarefas/CancelarTarefaModal";
 import {
@@ -39,6 +40,17 @@ import { toDateInputValue } from "@/lib/tasks/format-task-date-local";
 import { isTaskDisplayRecurring } from "@/lib/tasks/task-display-recurring";
 import { isTaskBlockedByObjectiveForEdit } from "@/lib/tasks/task-edit-policy";
 import { fetchSubtasks } from "@/lib/tasks/fetch-subtasks";
+import { fetchTaskResponsible } from "@/lib/tasks/fetch-task-responsible";
+import { putTaskResponsible } from "@/lib/tasks/put-task-responsible";
+import {
+  enrichSubtasksWithResponsible,
+  idResponsibleUserForChoice,
+  isApiTaskUuid,
+  isExplicitResponsibleAssignment,
+  normalizeUserId,
+  responsibleChoiceFromState,
+  type ResponsibleChoice,
+} from "@/lib/tasks/task-responsible";
 import { postSubtask } from "@/lib/tasks/post-subtask";
 import { deleteSubtask } from "@/lib/tasks/delete-subtask";
 import type { Objective, Tarefa, TarefaStatus, TarefaSubtarefa } from "@/lib/types/models";
@@ -111,6 +123,8 @@ export type EditarTarefaModalProps = {
   objectiveOptionsOverride?: Objective[];
   /** E-mail do usuário atual (excluir tarefa colaborativa só se for o autor). */
   viewerEmail?: string;
+  /** UUID do usuário autenticado (JWT). */
+  viewerUserId?: string | null;
   /**
    * Após exclusão bem-sucedida na API. Opcional: sem ele a tarefa some no back mas a lista local pode ficar desatualizada até recarregar.
    * `seriesRemoved`: refetch recomendado (série recorrente).
@@ -125,6 +139,7 @@ export function EditarTarefaModal({
   onSaved,
   objectiveOptionsOverride,
   viewerEmail,
+  viewerUserId = null,
   onDeleted,
 }: EditarTarefaModalProps) {
   const router = useRouter();
@@ -143,6 +158,10 @@ export function EditarTarefaModal({
   const [cancelSubModalOpen, setCancelSubModalOpen] = useState(false);
   const [cancelSubTarget, setCancelSubTarget] = useState<TarefaSubtarefa | null>(null);
   const cancelSubPrevStatusRef = useRef<TarefaStatus>("PENDING");
+  const [idResponsibleUser, setIdResponsibleUser] = useState<string | null | undefined>(undefined);
+  const [responsibleChoice, setResponsibleChoice] = useState<ResponsibleChoice>("creator");
+  const [responsibleLoading, setResponsibleLoading] = useState(false);
+  const responsibleSnapshotRef = useRef<string | null | undefined>(undefined);
 
   const { register, handleSubmit, control, reset, watch, setValue, formState: { errors, isDirty } } =
     useForm<FormValues>({
@@ -278,11 +297,13 @@ export function EditarTarefaModal({
       const migrated = migrateSubtasksFromParent(task.subtasks, task);
       setSubtasksState(migrated);
       subtasksSnapshotRef.current = JSON.stringify(migrated);
+      setIdResponsibleUser(undefined);
       return;
     }
 
     let cancelled = false;
     setSubtasksLoading(true);
+    setResponsibleLoading(true);
 
     void (async () => {
       let jwt = "";
@@ -296,8 +317,19 @@ export function EditarTarefaModal({
           setSubtasksState(migrated);
           subtasksSnapshotRef.current = JSON.stringify(migrated);
           setSubtasksLoading(false);
+          setResponsibleLoading(false);
         }
         return;
+      }
+
+      if (isApiTaskUuid(String(task.id))) {
+        const resp = await fetchTaskResponsible(jwt, String(task.id));
+        if (!cancelled && resp.kind === "ok") {
+          const raw = resp.data.idResponsibleUser;
+          setIdResponsibleUser(raw);
+          responsibleSnapshotRef.current = raw;
+          setResponsibleChoice(responsibleChoiceFromState(raw, viewerUserId));
+        }
       }
 
       const result = await fetchSubtasks(jwt, String(task.id));
@@ -307,22 +339,31 @@ export function EditarTarefaModal({
         router.push("/login");
         window.alert("Sessão expirada ou inválida. Faça login novamente.");
         setSubtasksLoading(false);
+        setResponsibleLoading(false);
         return;
       }
 
       if (result.kind === "ok") {
-        setSubtasksState(result.subtasks);
-        subtasksSnapshotRef.current = JSON.stringify(result.subtasks);
+        const enriched = await enrichSubtasksWithResponsible(jwt, result.subtasks);
+        if (!cancelled) {
+          setSubtasksState(enriched);
+          subtasksSnapshotRef.current = JSON.stringify(enriched);
+        }
       } else {
         const migrated = migrateSubtasksFromParent(task.subtasks, task);
-        setSubtasksState(migrated);
-        subtasksSnapshotRef.current = JSON.stringify(migrated);
+        if (!cancelled) {
+          setSubtasksState(migrated);
+          subtasksSnapshotRef.current = JSON.stringify(migrated);
+        }
       }
-      setSubtasksLoading(false);
+      if (!cancelled) {
+        setSubtasksLoading(false);
+        setResponsibleLoading(false);
+      }
     })();
 
     return () => { cancelled = true; };
-  }, [open, task, reset]);
+  }, [open, task, reset, router, viewerUserId]);
 
   const subtasksDirty = JSON.stringify(subtasksState) !== subtasksSnapshotRef.current;
 
@@ -691,6 +732,30 @@ export function EditarTarefaModal({
         recordCancellationReasons(data.idObjective, cancelRaw);
       }
 
+      let savedResponsible: string | null | undefined = idResponsibleUser;
+      const nextResponsible = idResponsibleUserForChoice(responsibleChoice, viewerUserId);
+      const responsibleChanged =
+        isApiTaskUuid(String(task.id)) &&
+        normalizeUserId(nextResponsible) !== normalizeUserId(responsibleSnapshotRef.current ?? null);
+
+      if (responsibleChanged) {
+        const respPut = await putTaskResponsible(jwtToken, {
+          idTask: String(task.id),
+          idResponsibleUser: nextResponsible,
+        });
+        if (respPut.kind === "unauthorized") {
+          router.push("/login");
+          window.alert("Você não está logado, por favor faça login novamente.");
+          return;
+        }
+        if (respPut.kind !== "ok") {
+          setApiError("Tarefa salva, mas não foi possível atualizar o responsável.");
+        } else {
+          savedResponsible = respPut.data.idResponsibleUser;
+          responsibleSnapshotRef.current = savedResponsible;
+        }
+      }
+
       onSaved({
         ...task,
         ...(serverTask ?? {}),
@@ -705,6 +770,7 @@ export function EditarTarefaModal({
         recurringDays: data.isRecurring ? (data.recurringDays ?? []) : [],
         recurringUntil: data.isRecurring ? data.recurringUntil : undefined,
         subtasks: subtasksClean.length > 0 ? subtasksClean : undefined,
+        idResponsibleUser: savedResponsible,
       });
       onOpenChange(false);
     } catch {
@@ -848,7 +914,8 @@ export function EditarTarefaModal({
               <div className="mb-5 flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <Dialog.Title className="text-lg font-extrabold text-[var(--text-primary)]">Editar tarefa</Dialog.Title>
-                  <p id="edit-tarefa-desc" className="mt-0.5 text-xs text-[var(--text-muted)] font-mono">{task.uuid}</p>
+                  <TaskIdCopyRow taskId={task.id} className="mt-1" />
+                  <p id="edit-tarefa-desc" className="sr-only">Formulário de edição da tarefa</p>
                   {(canDeleteCollaborative || canDeleteApi) && (
                     <button
                       type="button"
@@ -923,6 +990,33 @@ export function EditarTarefaModal({
                   {errors.idObjective && <p className="mt-1 text-sm text-brand-pink">{errors.idObjective.message}</p>}
                 </div>
 
+                {!task.sharedTask && isApiTaskUuid(String(task.id)) && (
+                  <div>
+                    <label htmlFor="et-responsible" className="mb-1 block text-sm font-medium text-[var(--text-primary)]">
+                      Responsável
+                    </label>
+                    {responsibleLoading ? (
+                      <p className="text-xs text-[var(--text-muted)]">Carregando responsável…</p>
+                    ) : viewerUserId &&
+                      normalizeUserId(task.idUser) === viewerUserId &&
+                      !isExplicitResponsibleAssignment(idResponsibleUser) ? (
+                      <p className="text-sm text-[var(--text-muted)]">
+                        <span className="font-medium text-[var(--text-primary)]">Você</span> (criador da tarefa)
+                      </p>
+                    ) : (
+                      <GlassSelect
+                        id="et-responsible"
+                        disabled={blockedReadOnly}
+                        value={responsibleChoice}
+                        onChange={(e) => setResponsibleChoice(e.target.value as ResponsibleChoice)}
+                      >
+                        <option value="creator">Criador da tarefa (padrão)</option>
+                        {viewerUserId ? <option value="self">Eu</option> : null}
+                      </GlassSelect>
+                    )}
+                  </div>
+                )}
+
                 {/* Data + Status (lado a lado) */}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
@@ -968,6 +1062,7 @@ export function EditarTarefaModal({
                       subtasks={subtasksState}
                       onSubtasksChange={blockedReadOnly ? () => {} : handleSubtasksChange}
                       onEditSubtask={blockedReadOnly ? () => {} : openEditSubtask}
+                      viewerUserId={viewerUserId}
                     />
                   )}
                 </div>
@@ -1175,6 +1270,9 @@ export function EditarTarefaModal({
       objectiveName={objectiveLabel}
       onSave={handleSubSave}
       onDelete={subModalMode === "edit" ? handleSubDelete : undefined}
+      enableResponsibleApi={!task.sharedTask}
+      viewerUserId={viewerUserId}
+      parentTask={task}
     />
 
     <CancelarTarefaModal

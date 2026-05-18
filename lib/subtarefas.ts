@@ -142,6 +142,10 @@ export function normalizeApiSubtask(raw: unknown): TarefaSubtarefa | null {
   const cancellationReason =
     typeof o.cancellationReason === "string" ? o.cancellationReason : null;
 
+  let idUser: number | string | undefined;
+  if (typeof o.idUser === "string" && o.idUser.trim()) idUser = o.idUser.trim();
+  else if (typeof o.idUser === "number" && Number.isFinite(o.idUser)) idUser = o.idUser;
+
   return {
     id,
     nameTask,
@@ -151,5 +155,6 @@ export function normalizeApiSubtask(raw: unknown): TarefaSubtarefa | null {
     idObjective,
     idParentTask,
     cancellationReason,
+    idUser,
   };
 }

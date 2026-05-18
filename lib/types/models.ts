@@ -62,6 +62,10 @@ export interface TarefaSubtarefa {
   /** UUID da tarefa pai (vindo da API). Necessário para operações de delete/update via endpoint de subtarefas. */
   idParentTask?: string | null;
   cancellationReason?: string | null;
+  /** Dono/criador da subtarefa (API). */
+  idUser?: number | string;
+  /** Valor bruto do GET responsible; null = sem atribuição explícita (fallback para idUser). */
+  idResponsibleUser?: string | null;
 }
 
 export interface Tarefa {
@@ -74,6 +78,8 @@ export interface Tarefa {
   dateTask: string; // YYYY-MM-DD
   idObjective: number | string;
   idUser?: number | string;
+  /** Valor bruto do GET responsible; null = sem atribuição explícita (fallback para idUser). */
+  idResponsibleUser?: string | null;
   isRecurring?: boolean;
   /** 0=Dom 1=Seg 2=Ter 3=Qua 4=Qui 5=Sex 6=Sáb */
   recurringDays?: number[];

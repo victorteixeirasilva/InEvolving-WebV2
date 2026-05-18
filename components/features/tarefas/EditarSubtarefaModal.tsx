@@ -1,15 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion } from "framer-motion";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { TaskIdCopyRow } from "@/components/features/tarefas/TaskIdCopyRow";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { DateField } from "@/components/ui/DateField";
+import { STORAGE_KEYS } from "@/lib/constants";
 import { createSubtaskId } from "@/lib/subtarefas";
-import type { TarefaSubtarefa, TarefaStatus } from "@/lib/types/models";
+import { fetchTaskResponsible } from "@/lib/tasks/fetch-task-responsible";
+import { putTaskResponsible } from "@/lib/tasks/put-task-responsible";
+import {
+  idResponsibleUserForChoice,
+  isApiTaskUuid,
+  isExplicitResponsibleAssignment,
+  normalizeUserId,
+  responsibleChoiceFromState,
+  type ResponsibleChoice,
+} from "@/lib/tasks/task-responsible";
+import type { Tarefa, TarefaSubtarefa, TarefaStatus } from "@/lib/types/models";
 import { cn } from "@/lib/utils";
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -26,13 +38,15 @@ export type EditarSubtarefaModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
-  /** Em edit: subtarefa existente. Em create: ignorado. */
   subtask: TarefaSubtarefa | null;
   defaultDateTask: string;
   idObjective: number | string;
   objectiveName: string;
   onSave: (s: TarefaSubtarefa) => void;
   onDelete?: (id: string) => void;
+  enableResponsibleApi?: boolean;
+  viewerUserId?: string | null;
+  parentTask?: Tarefa | null;
 };
 
 export function EditarSubtarefaModal({
@@ -45,6 +59,9 @@ export function EditarSubtarefaModal({
   objectiveName,
   onSave,
   onDelete,
+  enableResponsibleApi = false,
+  viewerUserId = null,
+  parentTask = null,
 }: EditarSubtarefaModalProps) {
   const [nameTask, setNameTask] = useState("");
   const [descriptionTask, setDescriptionTask] = useState("");
@@ -52,6 +69,14 @@ export function EditarSubtarefaModal({
   const [status, setStatus] = useState<TarefaStatus>("PENDING");
   const [subId, setSubId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [idResponsibleUser, setIdResponsibleUser] = useState<string | null | undefined>(undefined);
+  const [responsibleChoice, setResponsibleChoice] = useState<ResponsibleChoice>("creator");
+  const [responsibleLoading, setResponsibleLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const responsibleSnapshotRef = useRef<string | null | undefined>(undefined);
+
+  const showResponsible =
+    enableResponsibleApi && mode === "edit" && subtask && isApiTaskUuid(subtask.id);
 
   useEffect(() => {
     if (!open) return;
@@ -62,16 +87,52 @@ export function EditarSubtarefaModal({
       setDescriptionTask(subtask.descriptionTask ?? "");
       setDateTask(subtask.dateTask);
       setStatus(subtask.status);
+      setIdResponsibleUser(subtask.idResponsibleUser);
+      responsibleSnapshotRef.current = subtask.idResponsibleUser;
+      setResponsibleChoice(responsibleChoiceFromState(subtask.idResponsibleUser, viewerUserId));
     } else {
       setSubId(createSubtaskId());
       setNameTask("");
       setDescriptionTask("");
       setDateTask(defaultDateTask);
       setStatus("PENDING");
+      setIdResponsibleUser(undefined);
+      responsibleSnapshotRef.current = undefined;
+      setResponsibleChoice("creator");
     }
-  }, [open, mode, subtask, defaultDateTask]);
+  }, [open, mode, subtask, defaultDateTask, viewerUserId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!open || !showResponsible || !subtask) return;
+    let cancelled = false;
+    setResponsibleLoading(true);
+
+    void (async () => {
+      let jwt = "";
+      try {
+        jwt = String(localStorage.getItem(STORAGE_KEYS.token) ?? "").trim();
+      } catch {
+        /* ignore */
+      }
+      if (!jwt) {
+        if (!cancelled) setResponsibleLoading(false);
+        return;
+      }
+      const r = await fetchTaskResponsible(jwt, subtask.id);
+      if (!cancelled && r.kind === "ok") {
+        setIdResponsibleUser(r.data.idResponsibleUser);
+        responsibleSnapshotRef.current = r.data.idResponsibleUser;
+        setResponsibleChoice(responsibleChoiceFromState(r.data.idResponsibleUser, viewerUserId));
+      }
+      if (!cancelled) setResponsibleLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, showResponsible, subtask, viewerUserId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameTask.trim()) {
       setError("Informe o nome da subtarefa.");
@@ -81,14 +142,53 @@ export function EditarSubtarefaModal({
       setError("Data inválida.");
       return;
     }
-    onSave({
+
+    const payload: TarefaSubtarefa = {
       id: subId,
       nameTask: nameTask.trim(),
       descriptionTask: descriptionTask.trim(),
       dateTask,
       status,
       idObjective,
-    });
+      idUser: subtask?.idUser ?? parentTask?.idUser,
+      idResponsibleUser,
+    };
+
+    if (showResponsible) {
+      setSubmitting(true);
+      try {
+        let jwt = "";
+        try {
+          jwt = String(localStorage.getItem(STORAGE_KEYS.token) ?? "").trim();
+        } catch {
+          /* ignore */
+        }
+        const nextResponsible = idResponsibleUserForChoice(responsibleChoice, viewerUserId);
+        const changed =
+          normalizeUserId(nextResponsible) !== normalizeUserId(responsibleSnapshotRef.current ?? null);
+
+        if (jwt && changed) {
+          const put = await putTaskResponsible(jwt, {
+            idTask: subId,
+            idResponsibleUser: nextResponsible,
+          });
+          if (put.kind === "ok") {
+            payload.idResponsibleUser = put.data.idResponsibleUser;
+          } else {
+            setError("Não foi possível atualizar o responsável da subtarefa.");
+            return;
+          }
+        }
+
+        onSave(payload);
+        onOpenChange(false);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    onSave(payload);
     onOpenChange(false);
   };
 
@@ -98,6 +198,8 @@ export function EditarSubtarefaModal({
     onDelete(subtask.id);
     onOpenChange(false);
   };
+
+  const creatorId = normalizeUserId(subtask?.idUser ?? parentTask?.idUser);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -122,9 +224,12 @@ export function EditarSubtarefaModal({
             )}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
-              <Dialog.Title className="text-lg font-bold text-[var(--text-primary)]">
-                {mode === "create" ? "Nova subtarefa" : "Editar subtarefa"}
-              </Dialog.Title>
+              <div className="min-w-0 flex-1">
+                <Dialog.Title className="text-lg font-bold text-[var(--text-primary)]">
+                  {mode === "create" ? "Nova subtarefa" : "Editar subtarefa"}
+                </Dialog.Title>
+                {mode === "edit" && <TaskIdCopyRow taskId={subId} className="mt-1" />}
+              </div>
               <Dialog.Close
                 type="button"
                 className="rounded-xl p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
@@ -136,7 +241,7 @@ export function EditarSubtarefaModal({
             <p id="subtarefa-form-desc" className="text-sm text-[var(--text-muted)]">
               Objetivo (mesmo da tarefa pai): <span className="font-semibold text-brand-cyan">{objectiveName}</span>
             </p>
-            <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
+            <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 flex flex-col gap-3">
               <div>
                 <label htmlFor="sub-name" className="mb-1 block text-xs font-medium text-[var(--text-primary)]">
                   Nome <span className="text-brand-pink">*</span>
@@ -158,6 +263,31 @@ export function EditarSubtarefaModal({
                   )}
                 />
               </div>
+              {showResponsible && (
+                <div>
+                  <label htmlFor="sub-responsible" className="mb-1 block text-xs font-medium text-[var(--text-primary)]">
+                    Responsável
+                  </label>
+                  {responsibleLoading ? (
+                    <p className="text-xs text-[var(--text-muted)]">Carregando responsável…</p>
+                  ) : viewerUserId &&
+                    creatorId === viewerUserId &&
+                    !isExplicitResponsibleAssignment(idResponsibleUser) ? (
+                    <p className="text-sm text-[var(--text-muted)]">
+                      <span className="font-medium text-[var(--text-primary)]">Você</span> (criador)
+                    </p>
+                  ) : (
+                    <GlassSelect
+                      id="sub-responsible"
+                      value={responsibleChoice}
+                      onChange={(e) => setResponsibleChoice(e.target.value as ResponsibleChoice)}
+                    >
+                      <option value="creator">Criador da subtarefa (padrão)</option>
+                      {viewerUserId ? <option value="self">Eu</option> : null}
+                    </GlassSelect>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label htmlFor="sub-date" className="mb-1 block text-xs font-medium text-[var(--text-primary)]">
@@ -198,7 +328,9 @@ export function EditarSubtarefaModal({
                       Cancelar
                     </Button>
                   </Dialog.Close>
-                  <Button type="submit">Salvar</Button>
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? "Salvando…" : "Salvar"}
+                  </Button>
                 </div>
               </div>
             </form>
