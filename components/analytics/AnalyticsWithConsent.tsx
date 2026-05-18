@@ -1,6 +1,7 @@
 "use client";
 
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { GoogleAnalyticsRouteTracker } from "@/components/analytics/GoogleAnalyticsRouteTracker";
 import { GA_MEASUREMENT_ID, isGoogleAnalyticsEnabled } from "@/lib/analytics";
 import { isAnalyticsConsentGranted } from "@/lib/cookie-consent";
 import { useCookieConsentStore } from "@/stores/cookie-consent-store";
@@ -12,5 +13,10 @@ export function AnalyticsWithConsent() {
     return null;
   }
 
-  return <GoogleAnalytics gaId={GA_MEASUREMENT_ID} />;
+  return (
+    <>
+      <GoogleAnalytics gaId={GA_MEASUREMENT_ID} />
+      <GoogleAnalyticsRouteTracker />
+    </>
+  );
 }
