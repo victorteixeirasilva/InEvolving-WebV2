@@ -5,10 +5,11 @@ import { MobileDrawer } from "@/components/layout/MobileDrawer";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { LiquidBackdrop } from "@/components/layout/LiquidBackdrop";
 import { ParticleField } from "@/components/layout/ParticleField";
+import { FinanceShareNavGuard } from "@/components/layout/FinanceShareNavGuard";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <FinanceShareNavGuard>
       <LiquidBackdrop />
       <ParticleField />
       <div className="flex min-h-dvh w-full min-w-0 max-w-[100vw] overflow-x-hidden">
@@ -24,6 +25,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <BottomNav />
       <MobileDrawer />
-    </>
+    </FinanceShareNavGuard>
   );
 }
