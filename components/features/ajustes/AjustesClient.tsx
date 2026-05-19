@@ -40,6 +40,7 @@ import {
 } from "@/lib/ajustes-user-profile-notify";
 import { appToast } from "@/lib/app-toast";
 import { STORAGE_KEYS, buildWhatsAppMessageUrl } from "@/lib/constants";
+import { sendFriendInvite } from "@/lib/friends/send-friend-invite";
 import { fetchUserProfile } from "@/lib/user/fetch-user-profile";
 import { userProfileApiToAjustesProfile } from "@/lib/user/map-user-profile-api";
 import { patchUserEmail } from "@/lib/user/patch-user-email";
@@ -96,6 +97,8 @@ export function AjustesClient() {
   const [amigos, setAmigos] = useState<Amigo[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteMsg, setInviteMsg] = useState<string | null>(null);
+  const [inviteMsgVariant, setInviteMsgVariant] = useState<"info" | "success" | "error">("info");
+  const [inviteSending, setInviteSending] = useState(false);
   const [renewalDate, setRenewalDate] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
@@ -414,22 +417,71 @@ export function AjustesClient() {
     pendingProfileRef.current = null;
   };
 
-  const sendInvite = useCallback(() => {
+  const sendInvite = useCallback(async () => {
+    if (inviteSending) return;
+
     setInviteMsg(null);
-    const em = inviteEmail.trim().toLowerCase();
+    setInviteMsgVariant("info");
+
+    const emRaw = inviteEmail.trim();
+    const em = emRaw.toLowerCase();
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
       setInviteMsg("Digite um e-mail válido.");
+      setInviteMsgVariant("error");
       return;
     }
     if (amigos.some((a) => a.email === em)) {
       setInviteMsg("Este e-mail já está na lista.");
+      setInviteMsgVariant("error");
       return;
     }
-    const nextId = amigos.length === 0 ? 1 : Math.max(...amigos.map((a) => a.id)) + 1;
-    setAmigos((prev) => [...prev, { id: nextId, email: em }]);
-    setInviteEmail("");
-    setInviteMsg("Convite registrado (simulação). Em produção o amigo receberá o convite por e-mail.");
-  }, [amigos, inviteEmail]);
+
+    const jwt = readJwt();
+    if (!jwt) {
+      handleUnauthorized();
+      return;
+    }
+
+    setInviteSending(true);
+    try {
+      const r = await sendFriendInvite(jwt, emRaw);
+
+      if (r.kind === "ok") {
+        const nextId = amigos.length === 0 ? 1 : Math.max(...amigos.map((a) => a.id)) + 1;
+        setAmigos((prev) => [...prev, { id: nextId, email: em }]);
+        setInviteEmail("");
+        setInviteMsg(r.message);
+        setInviteMsgVariant("success");
+        appToast.success(r.message);
+        return;
+      }
+
+      if (r.kind === "unauthorized") {
+        handleUnauthorized();
+        return;
+      }
+
+      if (r.kind === "network_error") {
+        const msg = "Falha de conexão. Verifique sua internet.";
+        setInviteMsg(msg);
+        setInviteMsgVariant("error");
+        appToast.error(msg);
+        return;
+      }
+
+      const fallback =
+        r.kind === "http_error"
+          ? `Não foi possível enviar o convite (status ${r.status}).`
+          : "Não foi possível enviar o convite.";
+      const msg = ("message" in r && r.message) || fallback;
+      setInviteMsg(msg);
+      setInviteMsgVariant("error");
+      appToast.error(msg);
+    } finally {
+      setInviteSending(false);
+    }
+  }, [amigos, handleUnauthorized, inviteEmail, inviteSending]);
 
   const removeAmigo = (id: number) => {
     setAmigos((prev) => prev.filter((a) => a.id !== id));
@@ -695,13 +747,26 @@ export function AjustesClient() {
               className="py-2.5"
             />
           </div>
-          <Button type="button" className="w-full shrink-0 sm:w-auto" onClick={sendInvite}>
+          <Button
+            type="button"
+            className="w-full shrink-0 sm:w-auto"
+            onClick={() => void sendInvite()}
+            disabled={inviteSending}
+          >
             <EnvelopeIcon className="h-5 w-5" aria-hidden />
-            Enviar convite
+            {inviteSending ? "Enviando…" : "Enviar convite"}
           </Button>
         </div>
         {inviteMsg && (
-          <p className="text-sm text-[var(--text-muted)]" role="status">
+          <p
+            className={cn(
+              "text-sm",
+              inviteMsgVariant === "success" && "text-emerald-600 dark:text-emerald-400",
+              inviteMsgVariant === "error" && "text-brand-pink",
+              inviteMsgVariant === "info" && "text-[var(--text-muted)]"
+            )}
+            role="status"
+          >
             {inviteMsg}
           </p>
         )}
