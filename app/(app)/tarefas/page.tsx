@@ -25,9 +25,7 @@ import { EditarTarefaModal } from "@/components/features/tarefas/EditarTarefaMod
 import { KanbanBoard } from "@/components/features/tarefas/KanbanBoard";
 import { CancelarTarefaModal } from "@/components/features/tarefas/CancelarTarefaModal";
 import { TaskIdCopyRow } from "@/components/features/tarefas/TaskIdCopyRow";
-import { TaskResponsibleLine } from "@/components/features/tarefas/TaskResponsibleLine";
 import { parseJwtUserId } from "@/lib/auth/parse-jwt-user-id";
-import { enrichTasksWithResponsible } from "@/lib/tasks/task-responsible";
 import { DateField } from "@/components/ui/DateField";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { fetchDashboardCategories } from "@/lib/dashboard/fetch-dashboard-categories";
@@ -116,11 +114,9 @@ function alignTasksToFetchCalendarDay(tasks: Tarefa[], requestYmd: string): Tare
 function OverdueRow({
   task,
   onEdit,
-  viewerUserId,
 }: {
   task: Tarefa;
   onEdit: (t: Tarefa) => void;
-  viewerUserId: string | null;
 }) {
   const daysLate = Math.max(
     0,
@@ -139,7 +135,6 @@ function OverdueRow({
         {task.descriptionTask && (
           <p className="mt-0.5 truncate text-sm text-[var(--text-muted)]">{task.descriptionTask}</p>
         )}
-        <TaskResponsibleLine entity={task} sharedTask={task.sharedTask} viewerUserId={viewerUserId} className="mt-0.5" />
         {task.sharedTask && (
           <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-brand-cyan">
             <UserGroupIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -223,10 +218,9 @@ export default function TarefasPage() {
     }
   }, []);
 
-  const publishApiTasks = useCallback(async (jwt: string, apiTasks: Tarefa[]) => {
-    const enriched = await enrichTasksWithResponsible(jwt, apiTasks);
-    apiTasksRef.current = enriched;
-    setTasks(mergeBaseWithCollaborative(enriched));
+  const publishApiTasks = useCallback((apiTasks: Tarefa[]) => {
+    apiTasksRef.current = apiTasks;
+    setTasks(mergeBaseWithCollaborative(apiTasks));
   }, []);
 
   const loadTasksForCurrentScope = useCallback(async () => {
@@ -268,7 +262,7 @@ export default function TarefasPage() {
         setTasks(mergeBaseWithCollaborative([]));
         return;
       }
-      await publishApiTasks(jwtToken, objResult.tasks);
+      publishApiTasks(objResult.tasks);
       return;
     }
 
@@ -341,7 +335,7 @@ export default function TarefasPage() {
             merged.push(t);
           }
         }
-        await publishApiTasks(jwtToken, merged);
+        publishApiTasks(merged);
       } finally {
         setCategoryKanbanLoading(false);
       }
@@ -365,7 +359,7 @@ export default function TarefasPage() {
     }
 
     const aligned = alignTasksToFetchCalendarDay(result.tasks, dateStr);
-    await publishApiTasks(jwtToken, aligned);
+    publishApiTasks(aligned);
   }, [kanbanScope, scopeDate, scopeObjectiveId, scopeCategoryId, categories, handleUnauthorized, publishApiTasks]);
 
   useEffect(() => {
@@ -537,8 +531,7 @@ export default function TarefasPage() {
 
       setLateTasksLoadError(false);
       const overdue = result.tasks.filter((t) => t.status === "OVERDUE");
-      const enriched = await enrichTasksWithResponsible(jwtToken, overdue);
-      setLateTasksFromApi(enriched);
+      setLateTasksFromApi(overdue);
     })();
 
     return () => {
@@ -1286,7 +1279,7 @@ export default function TarefasPage() {
                         exit={{ opacity: 0, x: 6 }}
                         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                       >
-                        <OverdueRow task={t} onEdit={setEditingTask} viewerUserId={viewerUserId} />
+                        <OverdueRow task={t} onEdit={setEditingTask} />
                       </motion.div>
                     ))}
                   </AnimatePresence>

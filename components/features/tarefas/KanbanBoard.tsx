@@ -35,7 +35,6 @@ import {
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { TaskIdCopyRow } from "@/components/features/tarefas/TaskIdCopyRow";
-import { TaskResponsibleLine } from "@/components/features/tarefas/TaskResponsibleLine";
 import { cn } from "@/lib/utils";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { subtasksProgress } from "@/lib/subtarefas";
@@ -204,7 +203,6 @@ function SortableTaskCardDesktop({
         {task.descriptionTask && (
           <p className="line-clamp-2 text-xs text-[var(--text-muted)]">{task.descriptionTask}</p>
         )}
-        <TaskResponsibleLine entity={task} sharedTask={task.sharedTask} viewerUserId={viewerUserId} />
         {task.sharedTask && (
           <p className="text-[10px] text-[var(--text-muted)]">
             Por{" "}
@@ -254,7 +252,6 @@ function TaskCardOverlay({
       {task.descriptionTask && (
         <p className="mt-1 line-clamp-2 text-xs text-[var(--text-muted)]">{task.descriptionTask}</p>
       )}
-      <TaskResponsibleLine entity={task} sharedTask={task.sharedTask} viewerUserId={viewerUserId} className="mt-1" />
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
         <CalendarDaysIcon className="h-3 w-3 shrink-0" aria-hidden />
         <span>{fmt}</span>
@@ -323,7 +320,6 @@ function SortableTaskCardMobile({
           {task.descriptionTask && (
             <p className="text-xs text-[var(--text-muted)] line-clamp-2">{task.descriptionTask}</p>
           )}
-          <TaskResponsibleLine entity={task} sharedTask={task.sharedTask} viewerUserId={viewerUserId} />
           {task.sharedTask && (
             <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
               Por{" "}
